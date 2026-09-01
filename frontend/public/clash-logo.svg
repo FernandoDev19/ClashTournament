@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Fondo oscuro estilo Clash Royale -->
+    <linearGradient id="crBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="50%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Gradiente de la corona de oro -->
+    <linearGradient id="crCrownGold" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFF066" />
+      <stop offset="40%" stop-color="#FFC700" />
+      <stop offset="100%" stop-color="#D98200" />
+    </linearGradient>
+
+    <!-- Gradiente para el Rubí central -->
+    <linearGradient id="crRuby" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF4D4D" />
+      <stop offset="100%" stop-color="#990000" />
+    </linearGradient>
+
+    <!-- Sombra suave para dar relieve -->
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.4" />
+    </filter>
+  </defs>
+
+  <!-- Fondo redondeado -->
+  <rect width="512" height="512" rx="120" fill="url(#crBgGrad)" />
+
+  <!-- Borde fino de la interfaz -->
+  <rect x="8" y="8" width="496" height="496" rx="112" fill="none" stroke="#FFD700" stroke-width="4" opacity="0.3" />
+
+  <!-- Corona Minimalista -->
+  <g filter="url(#dropShadow)">
+    <path d="M 106 376 L 80 180 L 170 245 L 256 120 L 342 245 L 432 180 L 406 376 Z" 
+          fill="url(#crCrownGold)" 
+          stroke="#5C3A00" 
+          stroke-width="12" 
+          stroke-linejoin="round" />
+
+    <path d="M 100 340 L 412 340 L 406 376 L 106 376 Z" fill="#B36B00" opacity="0.3" />
+
+    <!-- Joya Central: Rubí -->
+    <polygon points="256,220 286,260 256,305 226,260" fill="url(#crRuby)" stroke="#500000" stroke-width="4" stroke-linejoin="round" />
+
+    <!-- Joyas Laterales -->
+    <circle cx="150" cy="290" r="14" fill="#00C9FF" stroke="#004D66" stroke-width="3" />
+    <circle cx="362" cy="290" r="14" fill="#00C9FF" stroke="#004D66" stroke-width="3" />
+
+    <!-- Picos superioes -->
+    <circle cx="80" cy="175" r="18" fill="url(#crCrownGold)" stroke="#5C3A00" stroke-width="6" />
+    <circle cx="256" cy="115" r="22" fill="url(#crCrownGold)" stroke="#5C3A00" stroke-width="6" />
+    <circle cx="432" cy="175" r="18" fill="url(#crCrownGold)" stroke="#5C3A00" stroke-width="6" />
+    
+    <!-- Detalle de brillo -->
+    <circle cx="250" cy="108" r="6" fill="#FFFFFF" opacity="0.8" />
+  </g>
+</svg>
