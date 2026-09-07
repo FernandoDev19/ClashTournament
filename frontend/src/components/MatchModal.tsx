@@ -110,12 +110,16 @@ export default function MatchModal({
                 <>
                   <BoltIcon className="size-4 text-amber-400 animate-pulse" />
                   <span className="font-bold text-amber-300">
-                    ⚡ Autovalidado desde Clash Royale API
+                    ⚡ Autovalidado API (Al mejor de 3)
                   </span>
                 </>
               ) : (
                 <span className="text-neutral/70">
-                  {match.winner ? "Marcador ingresado" : "Partida pendiente por disputar"}
+                  {match.winner
+                    ? "Ganador definido (Bo3 completado)"
+                    : match.score1 !== null || match.score2 !== null
+                    ? "Serie en curso (Bo3)"
+                    : "Partida pendiente por disputar"}
                 </span>
               )}
             </div>

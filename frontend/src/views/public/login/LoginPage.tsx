@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button, Input, Typography } from "@material-tailwind/react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -12,7 +13,7 @@ export default function LoginPage() {
     e.preventDefault();
     if (username === "admin" && password === "admin123") {
       sessionStorage.setItem("admin_auth", "true");
-      window.location.href = "/admin";
+      redirect("/admin");
     } else {
       alert("Credenciales incorrectas (Usa: admin / admin123)");
     }

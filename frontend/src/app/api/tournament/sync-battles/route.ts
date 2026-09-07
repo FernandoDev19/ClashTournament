@@ -53,9 +53,9 @@ export async function POST() {
       // Fetch battlelog for player 1
       const battles = await fetchPlayerBattlelog(tag1);
 
-      // Find match between tag1 and tag2
+      // Find all battles in battlelog between tag1 and tag2
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const foundBattle = battles.find((b: any) => {
+      const matchBattles = battles.filter((b: any) => {
         const teamTag = b.team?.[0]?.tag?.toUpperCase();
         const oppTag = b.opponent?.[0]?.tag?.toUpperCase();
         return (
@@ -64,13 +64,45 @@ export async function POST() {
         );
       });
 
-      if (foundBattle) {
-        const teamIsP1 = foundBattle.team?.[0]?.tag?.toUpperCase() === tag1;
-        const p1Data = teamIsP1 ? foundBattle.team?.[0] : foundBattle.opponent?.[0];
-        const p2Data = teamIsP1 ? foundBattle.opponent?.[0] : foundBattle.team?.[0];
+      if (matchBattles.length > 0) {
+        // API returns battles in reverse chronological order (newest first).
+        // Reverse them to evaluate the Bo3 series chronologically.
+        const chronologicalBattles = [...matchBattles].reverse();
 
-        const score1 = p1Data?.crowns ?? 0;
-        const score2 = p2Data?.crowns ?? 0;
+        let wins1 = 0;
+        let wins2 = 0;
+
+        for (const b of chronologicalBattles) {
+          // Stop counting if someone already won 2 games in this Bo3 match
+          if (wins1 >= 2 || wins2 >= 2) break;
+
+          const teamIsP1 = b.team?.[0]?.tag?.toUpperCase() === tag1;
+          const p1Data = teamIsP1 ? b.team?.[0] : b.opponent?.[0];
+          const p2Data = teamIsP1 ? b.opponent?.[0] : b.team?.[0];
+
+          const c1 = p1Data?.crowns ?? 0;
+          const c2 = p2Data?.crowns ?? 0;
+
+          if (c1 > c2) {
+            wins1++;
+          } else if (c2 > c1) {
+            wins2++;
+          }
+        }
+
+        // Winner of Bo3 requires at least 2 wins
+        let winnerId: string | null = null;
+        if (wins1 >= 2) {
+          winnerId = match.player1.id;
+        } else if (wins2 >= 2) {
+          winnerId = match.player2.id;
+        }
+
+        // Get decks and timestamp from the most recent battle played
+        const mostRecentBattle = matchBattles[0];
+        const teamIsP1 = mostRecentBattle.team?.[0]?.tag?.toUpperCase() === tag1;
+        const p1Data = teamIsP1 ? mostRecentBattle.team?.[0] : mostRecentBattle.opponent?.[0];
+        const p2Data = teamIsP1 ? mostRecentBattle.opponent?.[0] : mostRecentBattle.team?.[0];
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const deck1: CardItem[] = (p1Data?.cards || []).map((c: any) => ({
@@ -88,30 +120,32 @@ export async function POST() {
           iconUrl: c.iconUrls?.medium || c.iconUrls?.evoMedium || "",
         }));
 
-        let winnerId: string | null = null;
-        if (score1 > score2) winnerId = match.player1.id;
-        else if (score2 > score1) winnerId = match.player2.id;
+        const scoreChanged = match.score1 !== wins1 || match.score2 !== wins2;
+        const winnerChanged = match.winner !== winnerId;
 
-        match.score1 = score1;
-        match.score2 = score2;
-        match.deck1 = deck1;
-        match.deck2 = deck2;
-        match.battleTime = foundBattle.battleTime;
-        match.autoValidated = true;
-
-        if (winnerId && match.winner !== winnerId) {
+        if (scoreChanged || winnerChanged) {
+          match.score1 = wins1;
+          match.score2 = wins2;
           match.winner = winnerId;
-          updatedCount++;
-          syncedMatches.push(`${match.player1.name} (${score1}) vs ${match.player2.name} (${score2})`);
+          match.deck1 = deck1;
+          match.deck2 = deck2;
+          match.battleTime = mostRecentBattle.battleTime;
+          match.autoValidated = true;
 
-          // Propagate winner to next round
+          updatedCount++;
+          if (winnerId) {
+            syncedMatches.push(`${match.player1.name} (${wins1}) vs ${match.player2.name} (${wins2})`);
+          }
+
+          // Propagate winner to next round (or clear if null/undecided)
           const nextRound = tournament.bracket.rounds[rIdx + 1];
           if (nextRound) {
             const nextMatchIndex = Math.floor(mIdx / 2);
             const nextMatch = nextRound.matches[nextMatchIndex];
             if (nextMatch) {
-              const winnerPlayer =
-                match.player1.id === winnerId ? match.player1 : match.player2;
+              const winnerPlayer = winnerId
+                ? (match.player1.id === winnerId ? match.player1 : match.player2)
+                : null;
               if (mIdx % 2 === 0) {
                 nextMatch.player1 = winnerPlayer;
               } else {

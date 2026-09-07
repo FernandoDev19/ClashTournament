@@ -234,7 +234,9 @@ export default function BracketsPage() {
   }, []);
 
   useEffect(() => {
-    fetchTournament();
+    Promise.resolve(() => fetchTournament()).catch((e: unknown) => {
+      console.error("Error:", (e as Error).message)
+    })
 
     // Auto-sync battles every 15 seconds if bracket exists
     const interval = setInterval(() => {

@@ -30,8 +30,8 @@ export async function PATCH(
       match.winner = winner !== undefined ? winner : match.winner;
       matchFound = true;
 
-      // Propagate winner to next round
-      if (winner) {
+      // Propagate winner to next round (or clear if set to null)
+      if (winner !== undefined) {
         const roundIndex = tournament.bracket.rounds.indexOf(round);
         const nextRound = tournament.bracket.rounds[roundIndex + 1];
         if (nextRound) {
@@ -40,13 +40,15 @@ export async function PATCH(
           const nextMatch = nextRound.matches[nextMatchIndex];
           if (nextMatch) {
             const winnerPlayer =
-              match.player1?.id === winner ? match.player1 : match.player2;
-            if (winnerPlayer) {
-              if (matchIndex % 2 === 0) {
-                nextMatch.player1 = winnerPlayer;
-              } else {
-                nextMatch.player2 = winnerPlayer;
-              }
+              winner === match.player1?.id
+                ? match.player1
+                : winner === match.player2?.id
+                ? match.player2
+                : null;
+            if (matchIndex % 2 === 0) {
+              nextMatch.player1 = winnerPlayer;
+            } else {
+              nextMatch.player2 = winnerPlayer;
             }
           }
         }

@@ -1,6 +1,6 @@
 "use client";
 
-import AdminPage from "@/src/pages/admin/AdminPage";
+import AdminPage from "@/src/views/admin/AdminPage";
 
 export const dynamic = "force-dynamic";
 
