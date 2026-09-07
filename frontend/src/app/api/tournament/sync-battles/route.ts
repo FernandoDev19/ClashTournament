@@ -9,7 +9,7 @@ async function fetchPlayerBattlelog(tag: string): Promise<any[]> {
   if (!CR_API_TOKEN) return [];
   const normalized = tag.startsWith("#") ? tag : `#${tag}`;
   const encoded = encodeURIComponent(normalized);
-  const url = `https://api.clashroyale.com/v1/players/${encoded}/battlelog`;
+  const url = `https://proxy.royaleapi.dev/v1/players/${encoded}/battlelog`;
 
   try {
     const res = await fetch(url, {

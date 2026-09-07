@@ -13,7 +13,7 @@ export async function GET(
     tag.startsWith("#") ? tag : `#${tag}`
   );
 
-  const url = `https://api.clashroyale.com/v1/players/${encodedTag}`;
+  const url = `https://proxy.royaleapi.dev/v1/players/${encodedTag}`;
 
   try {
     const response = await fetch(url, {
