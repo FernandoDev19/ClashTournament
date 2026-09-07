@@ -135,14 +135,25 @@ export default function AdminPage() {
     }
   }, [fetchData]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordInput === process.env.ADMIN_PASSWORD) {
-      sessionStorage.setItem("admin_auth", "true");
-      setAuthenticated(true);
-      fetchData();
-    } else {
-      setLoginError("Contraseña incorrecta");
+    setLoginError("");
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: passwordInput }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        sessionStorage.setItem("admin_auth", "true");
+        setAuthenticated(true);
+        fetchData();
+      } else {
+        setLoginError(data.message || "Contraseña incorrecta");
+      }
+    } catch {
+      setLoginError("Error de conexión al servidor");
     }
   };
 
