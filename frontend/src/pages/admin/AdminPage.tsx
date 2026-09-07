@@ -10,7 +10,9 @@ import {
   ClockIcon,
   PlayIcon,
   ArrowPathIcon,
+  BoltIcon,
 } from "@heroicons/react/24/outline";
+import MatchModal from "@/src/components/MatchModal";
 
 interface Player {
   id: string;
@@ -33,6 +35,13 @@ interface MatchPlayer {
   trophies: number;
 }
 
+interface CardItem {
+  name: string;
+  level: number;
+  maxLevel: number;
+  iconUrl: string;
+}
+
 interface Match {
   id: string;
   round: string;
@@ -41,6 +50,10 @@ interface Match {
   winner: string | null;
   score1: number | null;
   score2: number | null;
+  deck1?: CardItem[] | null;
+  deck2?: CardItem[] | null;
+  battleTime?: string | null;
+  autoValidated?: boolean;
 }
 
 interface Round {
@@ -78,6 +91,11 @@ export default function AdminPage() {
 
   const [tournamentDate, setTournamentDate] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(16);
+  const [syncing, setSyncing] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState<{
+    match: Match;
+    roundLabel: string;
+  } | null>(null);
 
   const showMsg = useCallback((text: string, type: "success" | "error") => {
     setMsg({ text, type });
@@ -179,6 +197,26 @@ export default function AdminPage() {
       }
     } catch {
       showMsg("Error de conexión", "error");
+    }
+  };
+
+  const handleSyncBattles = async () => {
+    try {
+      setSyncing(true);
+      const res = await fetch("/api/tournament/sync-battles", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg(data.message || "Partidas sincronizadas", "success");
+        fetchData();
+      } else {
+        showMsg(data.message || "Error al sincronizar partidas", "error");
+      }
+    } catch {
+      showMsg("Error al conectar con la API de sincronización", "error");
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -568,13 +606,24 @@ export default function AdminPage() {
               </button>
 
               {tournament?.bracket && (
-                <button
-                  onClick={handleResetBracket}
-                  className="border border-red-500/40 text-red-400 hover:bg-red-500/10 px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 transition-colors cursor-pointer text-sm"
-                >
-                  <ArrowPathIcon className="size-5" />
-                  Reiniciar Bracket
-                </button>
+                <>
+                  <button
+                    onClick={handleSyncBattles}
+                    disabled={syncing}
+                    className="bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 transition-colors disabled:opacity-40 cursor-pointer text-sm"
+                  >
+                    <BoltIcon className={`size-5 ${syncing ? "animate-spin" : ""}`} />
+                    ⚡ Auto-Sincronizar Partidas API
+                  </button>
+
+                  <button
+                    onClick={handleResetBracket}
+                    className="border border-red-500/40 text-red-400 hover:bg-red-500/10 px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 transition-colors cursor-pointer text-sm"
+                  >
+                    <ArrowPathIcon className="size-5" />
+                    Reiniciar Bracket
+                  </button>
+                </>
               )}
             </div>
 
@@ -590,8 +639,11 @@ export default function AdminPage() {
                     key={round.key}
                     className="bg-primary border border-white/10 rounded-xl p-4"
                   >
-                    <h4 className="text-tertiary font-bold mb-4 border-b border-white/10 pb-2 text-base">
-                      {round.label}
+                    <h4 className="text-tertiary font-bold mb-4 border-b border-white/10 pb-2 text-base flex justify-between items-center">
+                      <span>{round.label}</span>
+                      <span className="text-xs text-neutral font-normal">
+                        {round.matches.length} partidos
+                      </span>
                     </h4>
 
                     <div className="flex flex-col gap-4">
@@ -599,8 +651,15 @@ export default function AdminPage() {
                         <AdminMatchCard
                           key={match.id}
                           match={match}
+                          roundLabel={round.label}
                           onSave={(s1, s2, winnerId) =>
                             handleUpdateMatch(match.id, s1, s2, winnerId)
+                          }
+                          onInspect={() =>
+                            setSelectedMatch({
+                              match,
+                              roundLabel: round.label,
+                            })
                           }
                         />
                       ))}
@@ -611,6 +670,19 @@ export default function AdminPage() {
             )}
           </div>
         )}
+
+        {/* Modal de inspección de partido */}
+        <MatchModal
+          match={selectedMatch?.match ?? null}
+          roundLabel={selectedMatch?.roundLabel ?? ""}
+          isOpen={!!selectedMatch}
+          onClose={() => setSelectedMatch(null)}
+          onSync={async () => {
+            await handleSyncBattles();
+            fetchData();
+          }}
+          isSyncing={syncing}
+        />
 
         {/* Tab 4: Configuración */}
         {activeTab === "config" && (
@@ -662,9 +734,12 @@ export default function AdminPage() {
 function AdminMatchCard({
   match,
   onSave,
+  onInspect,
 }: {
   match: Match;
+  roundLabel: string;
   onSave: (s1: number, s2: number, winnerId: string | null) => void;
+  onInspect: () => void;
 }) {
   const [s1, setS1] = useState(match.score1 ?? 0);
   const [s2, setS2] = useState(match.score2 ?? 0);
@@ -677,7 +752,25 @@ function AdminMatchCard({
   };
 
   return (
-    <div className="bg-slate-900/80 border border-white/10 rounded-lg p-3 flex flex-col gap-2">
+    <div className="bg-slate-900/80 border border-white/10 rounded-lg p-3 flex flex-col gap-2 relative">
+      {/* Header bar */}
+      <div className="flex items-center justify-between text-[10px] text-neutral/50 border-b border-white/5 pb-1">
+        <span>ID: {match.id}</span>
+        {match.autoValidated && (
+          <span className="text-amber-300 font-bold bg-amber-500/20 px-1.5 rounded">
+            ⚡ Autovalidado API
+          </span>
+        )}
+        {p1 && p2 && (
+          <button
+            onClick={onInspect}
+            className="text-secondary hover:underline cursor-pointer font-bold ml-auto"
+          >
+            🎴 Ver Mazos
+          </button>
+        )}
+      </div>
+
       <div className="flex items-center justify-between gap-2 text-xs">
         <span className="font-bold text-white truncate max-w-[100px]">
           {p1?.name ?? "Por definir"}

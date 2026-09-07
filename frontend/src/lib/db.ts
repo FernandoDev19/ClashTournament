@@ -30,6 +30,13 @@ export interface MatchPlayer {
   trophies: number;
 }
 
+export interface CardItem {
+  name: string;
+  level: number;
+  maxLevel: number;
+  iconUrl: string;
+}
+
 export interface Match {
   id: string;
   round: string;
@@ -38,6 +45,10 @@ export interface Match {
   winner: string | null; // player id
   score1: number | null;
   score2: number | null;
+  deck1?: CardItem[] | null;
+  deck2?: CardItem[] | null;
+  battleTime?: string | null;
+  autoValidated?: boolean;
 }
 
 export interface Tournament {

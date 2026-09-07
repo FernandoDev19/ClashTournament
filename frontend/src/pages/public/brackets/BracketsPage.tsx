@@ -1,9 +1,11 @@
 "use client";
 
-import { TrophyIcon } from "@heroicons/react/24/outline";
+import { TrophyIcon, BoltIcon } from "@heroicons/react/24/outline";
 import { FireIcon, StarIcon } from "@heroicons/react/24/solid";
 import { Chip, Typography } from "@material-tailwind/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import MatchModal from "@/src/components/MatchModal";
+import type { CardItem } from "@/src/lib/db";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,6 +24,10 @@ interface Match {
   winner: string | null; // player id
   score1: number | null;
   score2: number | null;
+  deck1?: CardItem[] | null;
+  deck2?: CardItem[] | null;
+  battleTime?: string | null;
+  autoValidated?: boolean;
 }
 
 interface Round {
@@ -43,7 +49,7 @@ interface Tournament {
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
-function PlayerAvatar({ name, trophies }: { name: string; trophies: number }) {
+function PlayerAvatar({ name }: { name: string; trophies: number }) {
   const initials = name.substring(0, 2).toUpperCase();
   return (
     <div
@@ -54,7 +60,15 @@ function PlayerAvatar({ name, trophies }: { name: string; trophies: number }) {
   );
 }
 
-function MatchCard({ match, round }: { match: Match; round: string }) {
+function MatchCard({
+  match,
+  round,
+  onClick,
+}: {
+  match: Match;
+  round: string;
+  onClick?: () => void;
+}) {
   const p1Won = Boolean(match.winner && match.player1 && match.winner === match.player1.id);
   const p2Won = Boolean(match.winner && match.player2 && match.winner === match.player2.id);
   const played = !!match.winner;
@@ -72,13 +86,25 @@ function MatchCard({ match, round }: { match: Match; round: string }) {
 
   return (
     <div
-      className="flex flex-col gap-1 rounded-xl border border-white/10 bg-primary/80 p-2 min-w-[200px] max-w-[220px] shadow-lg shadow-black/30"
+      onClick={onClick}
+      className="flex flex-col gap-1 rounded-xl border border-white/10 bg-primary/80 p-2 min-w-[200px] max-w-[220px] shadow-lg shadow-black/30 hover:border-secondary/50 hover:scale-[1.02] transition-all cursor-pointer group"
       style={{ backdropFilter: "blur(6px)" }}
     >
-      {/* Label */}
-      <span className="text-[10px] font-semibold text-neutral/50 uppercase tracking-widest px-1 mb-1">
-        {round}
-      </span>
+      {/* Label & Badges */}
+      <div className="flex items-center justify-between px-1 mb-1">
+        <span className="text-[10px] font-semibold text-neutral/50 uppercase tracking-widest">
+          {round}
+        </span>
+        {match.autoValidated ? (
+          <span className="text-[9px] font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+            ⚡ Auto
+          </span>
+        ) : match.player1 && match.player2 ? (
+          <span className="text-[9px] text-neutral/40 group-hover:text-secondary transition-colors">
+            Ver mazos ➔
+          </span>
+        ) : null}
+      </div>
 
       {/* Player 1 */}
       <div className={rowClass(p1Won, !match.player1)}>
@@ -137,10 +163,12 @@ function RoundColumn({
   label,
   matches,
   roundKey,
+  onSelectMatch,
 }: {
   label: string;
   matches: Match[];
   roundKey: string;
+  onSelectMatch: (m: Match, label: string) => void;
 }) {
   return (
     <div className="flex flex-col items-center gap-2">
@@ -151,7 +179,12 @@ function RoundColumn({
       {/* Matches evenly spaced */}
       <div className="flex flex-col justify-around flex-1 gap-6">
         {matches.map((m) => (
-          <MatchCard key={m.id} match={m} round={roundKey} />
+          <MatchCard
+            key={m.id}
+            match={m}
+            round={roundKey}
+            onClick={() => onSelectMatch(m, label)}
+          />
         ))}
       </div>
     </div>
@@ -163,26 +196,56 @@ function RoundColumn({
 export default function BracketsPage() {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
-  
-    const fetchTournament = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch("/api/tournament");
-        const data = await res.json();
-        setTournament(data);
-      } catch {
-        // ignore
-      } finally {
-        setLoading(false);
-      }
-    };
+  const [syncing, setSyncing] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState<{
+    match: Match;
+    roundLabel: string;
+  } | null>(null);
 
-  useEffect(() => {
-    Promise.resolve().then(() => fetchTournament());
+  const fetchTournament = useCallback(async () => {
+    try {
+      const res = await fetch("/api/tournament");
+      const data = await res.json();
+      setTournament(data);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  const syncBattles = useCallback(async () => {
+    try {
+      setSyncing(true);
+      const res = await fetch("/api/tournament/sync-battles", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok && data.bracket) {
+        setTournament((prev) =>
+          prev ? { ...prev, bracket: data.bracket } : prev
+        );
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSyncing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTournament();
+
+    // Auto-sync battles every 15 seconds if bracket exists
+    const interval = setInterval(() => {
+      syncBattles();
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [fetchTournament, syncBattles]);
+
   const rounds = tournament?.bracket?.rounds ?? [];
-  
+
   let totalMatches = 0;
   let completedMatches = 0;
 
@@ -191,7 +254,8 @@ export default function BracketsPage() {
     completedMatches += r.matches.filter((m) => m.winner).length;
   });
 
-  const progress = totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0;
+  const progress =
+    totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0;
 
   // Final winner determination
   const finalRound = rounds.find((r) => r.key === "final");
@@ -205,15 +269,15 @@ export default function BracketsPage() {
   return (
     <div className="bg-linear-to-r from-primary via-secondary/10 to-tertiary/10 flex flex-col flex-1 font-sans">
       <div className="w-full py-15 md:py-20 px-6 md:px-20">
-
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-bold animate-pulse">
+                <span className="size-2 rounded-full bg-red-500 animate-ping" />
+                <span>En Vivo (Auto-sync 15s)</span>
+              </div>
               <FireIcon className="size-5 text-tertiary" />
-              <span className="text-xs font-extrabold text-tertiary/80 uppercase tracking-widest">
-                {tournament?.status === "active" ? "Torneo Activo" : "Estado del Torneo"}
-              </span>
             </div>
             <Typography
               variant="h1"
@@ -221,32 +285,59 @@ export default function BracketsPage() {
             >
               Cuadro del Torneo
             </Typography>
-            <Typography variant="h6" className="text-neutral font-medium md:text-base">
-              Eliminación directa · Mejor de 3 · {tournament?.maxPlayers ?? 16} jugadores
+            <Typography
+              variant="h6"
+              className="text-white font-bold md:text-base flex items-center gap-2"
+            >
+              Haz clic en cualquier partido para ver el **mazo de cartas** y el detalle del resultado.
             </Typography>
           </div>
 
-          {/* Progress */}
+          {/* Progress & Live Sync button */}
           <div
-            className="rounded-xl border border-secondary/30 bg-primary/80 p-5 min-w-[220px]"
+            className="rounded-xl border border-secondary/30 bg-primary/80 p-5 min-w-[240px] flex flex-col gap-3"
             style={{ boxShadow: "0px 0px 20px -8px var(--secondary)" }}
           >
-            <div className="flex items-center gap-2 mb-3">
-              <TrophyIcon className="size-5 text-secondary" />
-              <span className="text-sm font-bold text-white">Progreso</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrophyIcon className="size-5 text-secondary" />
+                <span className="text-sm font-bold text-white">Progreso</span>
+              </div>
+              <button
+                onClick={syncBattles}
+                disabled={syncing}
+                className="p-1.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-lg hover:bg-amber-500/30 transition-colors cursor-pointer text-xs font-bold flex items-center gap-1"
+                title="Sincronizar batallas ahora"
+              >
+                <BoltIcon
+                  className={`size-4 ${syncing ? "animate-spin" : ""}`}
+                />
+                Sync
+              </button>
             </div>
-            <div className="flex justify-between mb-2">
-              <span className="text-xs text-neutral">{completedMatches}/{totalMatches} partidos</span>
-              <span className="text-xs font-bold text-secondary">{progress}%</span>
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-xs text-neutral">
+                  {completedMatches}/{totalMatches} partidos
+                </span>
+                <span className="text-xs font-bold text-secondary">
+                  {progress}%
+                </span>
+              </div>
+              <div className="w-full bg-white/10 rounded-full h-2">
+                <div
+                  className="bg-linear-to-r from-secondary to-tertiary h-2 rounded-full transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full bg-white/10 rounded-full h-2">
-              <div
-                className="bg-linear-to-r from-secondary to-tertiary h-2 rounded-full transition-all"
-                style={{ width: `${progress}%` }}
+            <div className="flex gap-2 flex-wrap">
+              <Chip
+                variant="ghost"
+                size="sm"
+                value={`Aceptados: ${tournament?.acceptedCount ?? 0}`}
+                className="text-tertiary border-tertiary/30 text-xs"
               />
-            </div>
-            <div className="mt-3 flex gap-2 flex-wrap">
-              <Chip variant="ghost" size="sm" value={`Aceptados: ${tournament?.acceptedCount ?? 0}`} className="text-tertiary border-tertiary/30 text-xs" />
             </div>
           </div>
         </div>
@@ -262,18 +353,25 @@ export default function BracketsPage() {
               El cuadro aún no ha sido generado
             </Typography>
             <Typography variant="small">
-              El torneo está en fase de registros. Tan pronto como el administrador genere las llaves, el cuadro aparecerá aquí.
+              El torneo está en fase de registros. Tan pronto como el administrador
+              genere las llaves, el cuadro aparecerá aquí.
             </Typography>
           </div>
         ) : (
           /* Bracket — scrollable horizontally on small screens */
           <div className="overflow-x-auto pb-6">
             <div className="flex gap-8 items-stretch min-w-max">
-
               {rounds.map((rd) => (
                 <div key={rd.key} className="flex gap-8 items-stretch">
-                  <RoundColumn label={rd.label} matches={rd.matches} roundKey={rd.key.toUpperCase()} />
-                  
+                  <RoundColumn
+                    label={rd.label}
+                    matches={rd.matches}
+                    roundKey={rd.key.toUpperCase()}
+                    onSelectMatch={(m, label) =>
+                      setSelectedMatch({ match: m, roundLabel: label })
+                    }
+                  />
+
                   {/* Connector line */}
                   <div className="flex items-center">
                     <div className="w-8 border-t border-dashed border-secondary/20" />
@@ -288,27 +386,43 @@ export default function BracketsPage() {
                   style={{ boxShadow: "0px 0px 30px -8px var(--tertiary)" }}
                 >
                   <TrophyIcon className="size-10 text-tertiary" />
-                  <Typography variant="h6" className="text-white font-extrabold text-center">
+                  <Typography
+                    variant="h6"
+                    className="text-white font-extrabold text-center"
+                  >
                     Campeón
                   </Typography>
                   {champion ? (
                     <div className="text-center">
-                      <span className="text-sm font-extrabold text-secondary block">{champion.name}</span>
-                      <span className="text-xs text-neutral">{champion.tag}</span>
+                      <span className="text-sm font-extrabold text-secondary block">
+                        {champion.name}
+                      </span>
+                      <span className="text-xs text-neutral">
+                        {champion.tag}
+                      </span>
                     </div>
                   ) : (
-                    <span className="text-xs text-neutral/60 italic text-center">Por definir</span>
+                    <span className="text-xs text-neutral/60 italic text-center">
+                      Por definir
+                    </span>
                   )}
                 </div>
               </div>
-
             </div>
           </div>
         )}
 
         {/* Legend */}
         <div className="mt-8 flex flex-wrap gap-4 items-center">
-          <span className="text-xs text-neutral/50 font-semibold uppercase tracking-wider">Leyenda:</span>
+          <span className="text-xs text-neutral/50 font-semibold uppercase tracking-wider">
+            Leyenda:
+          </span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold flex items-center justify-center">
+              ⚡
+            </div>
+            <span className="text-xs text-neutral/70">Autovalidado por API</span>
+          </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded bg-secondary/20 border border-secondary/40" />
             <span className="text-xs text-neutral/70">Ganador</span>
@@ -318,15 +432,23 @@ export default function BracketsPage() {
             <span className="text-xs text-neutral/70">Por jugar</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-white/5 opacity-40" />
-            <span className="text-xs text-neutral/70">Por definir</span>
-          </div>
-          <div className="flex items-center gap-1.5">
             <StarIcon className="size-3 text-secondary" />
             <span className="text-xs text-neutral/70">Clasificó</span>
           </div>
         </div>
 
+        {/* Match Details Modal */}
+        <MatchModal
+          match={selectedMatch?.match ?? null}
+          roundLabel={selectedMatch?.roundLabel ?? ""}
+          isOpen={!!selectedMatch}
+          onClose={() => setSelectedMatch(null)}
+          onSync={async () => {
+            await syncBattles();
+            fetchTournament();
+          }}
+          isSyncing={syncing}
+        />
       </div>
     </div>
   );
