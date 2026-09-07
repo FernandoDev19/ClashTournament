@@ -137,12 +137,12 @@ export default function AdminPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordInput === "admin123") {
+    if (passwordInput === process.env.ADMIN_PASSWORD) {
       sessionStorage.setItem("admin_auth", "true");
       setAuthenticated(true);
       fetchData();
     } else {
-      setLoginError("Contraseña incorrecta (Usa: admin123)");
+      setLoginError("Contraseña incorrecta");
     }
   };
 
@@ -302,7 +302,7 @@ export default function AdminPage() {
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <input
               type="password"
-              placeholder="Contraseña (admin123)"
+              placeholder="********"
               value={passwordInput}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setPasswordInput(e.target.value)
