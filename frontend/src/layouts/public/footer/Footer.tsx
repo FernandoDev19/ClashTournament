@@ -8,7 +8,9 @@ export default function Footer() {
   return (
     <footer className="bg-primary border-t border-neutral/30 p-10">
       <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-        <Image src="/logo-l-white.svg" alt="Logo" width={200} height={50} />
+        <Link href="https://fernando-dev-19.netlify.app" target="_blank">
+          <Image src="/logo-l-white.svg" alt="Logo" width={200} height={50} />
+        </Link>
 
         <div className="flex items-center gap-6">
           <Link href="#" title="Discord" target="_blank">
@@ -39,7 +41,6 @@ export default function Footer() {
         >
           Todos los derechos reservados © 2026
         </Typography>
-
       </div>
     </footer>
   );
