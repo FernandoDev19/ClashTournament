@@ -1,41 +1,20 @@
 {
   "players": [
     {
-      "id": "9b2aaa2d-c549-4bd8-a227-236ec0297aa3",
-      "tag": "#UJ8RR99CY",
-      "name": "Ferxxo",
-      "trophies": 11249,
-      "bestTrophies": 11249,
-      "expLevel": 36,
-      "clan": {
-        "name": "SB TPP",
-        "tag": "#GG9U9PRJ"
-      },
-      "arena": "Musketeer Street",
-      "contact": "3005442580",
-      "status": "accepted",
-      "registeredAt": "2026-08-29T02:24:14.119Z",
-      "wins": 0,
-      "losses": 0
-    },
-    {
-      "id": "71d578f9-d58b-4cc8-ae3d-360ee15a2e74",
-      "tag": "#89LC02J8L",
-      "name": "Overlord",
-      "trophies": 13823,
-      "bestTrophies": 13853,
-      "expLevel": 65,
-      "clan": {
-        "name": "cadenas",
-        "tag": "#J0L8U8UP"
-      },
-      "arena": "Spirit Square",
-      "contact": "3005025695",
-      "status": "accepted",
-      "registeredAt": "2026-09-01T19:41:29.298Z",
+      "id": "b2c2dc92-3367-4bf7-aa16-70344cdf1b7a",
+      "tag": "#PRUEBA99",
+      "name": "TestSupabase",
+      "trophies": 4000,
+      "bestTrophies": 4500,
+      "expLevel": 13,
+      "clan": null,
+      "arena": null,
+      "contact": "tel:12345",
+      "status": "pending",
+      "registeredAt": "2026-09-08T00:55:58.205Z",
       "wins": 0,
       "losses": 0
     }
   ],
-  "lastUpdated": "2026-09-01T19:46:36.228Z"
+  "lastUpdated": "2026-09-08T00:55:58.652Z"
 }

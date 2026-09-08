@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     req.headers.get("x-admin-auth") === "true" ||
     req.nextUrl.searchParams.get("admin") === "true";
 
-  let players = getPlayers();
+  let players = await getPlayers();
 
   if (status && status !== "all") {
     players = players.filter((p) => p.status === status);
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check for duplicate tag
-    const existing = getPlayerByTag(tag);
+    const existing = await getPlayerByTag(tag);
     if (existing) {
       return NextResponse.json(
         { message: "Este tag ya está registrado en el torneo." },
@@ -53,9 +53,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Check max players
-    const tournament = getTournament();
-    const acceptedCount = getPlayers().filter((p) => p.status === "accepted").length;
-    const pendingCount = getPlayers().filter((p) => p.status === "pending").length;
+    const tournament = await getTournament();
+    const allPlayers = await getPlayers();
+    const acceptedCount = allPlayers.filter((p) => p.status === "accepted").length;
+    const pendingCount = allPlayers.filter((p) => p.status === "pending").length;
 
     if (acceptedCount + pendingCount >= tournament.maxPlayers) {
       return NextResponse.json(
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest) {
       losses: 0,
     };
 
-    upsertPlayer(newPlayer);
+    await upsertPlayer(newPlayer);
 
     return NextResponse.json({ player: newPlayer }, { status: 201 });
   } catch (err) {

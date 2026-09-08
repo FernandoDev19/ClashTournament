@@ -3,8 +3,8 @@ import { getTournament, saveTournament, getPlayers, generateBracket } from "@/sr
 
 // GET /api/tournament
 export async function GET() {
-  const tournament = getTournament();
-  const players = getPlayers();
+  const tournament = await getTournament();
+  const players = await getPlayers();
   const acceptedPlayers = players.filter((p) => p.status === "accepted");
 
   return NextResponse.json({
@@ -20,10 +20,11 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { action, tournamentDate, maxPlayers, status } = body;
 
-  const tournament = getTournament();
+  const tournament = await getTournament();
 
   if (action === "generate_bracket") {
-    const acceptedPlayers = getPlayers().filter((p) => p.status === "accepted");
+    const allPlayers = await getPlayers();
+    const acceptedPlayers = allPlayers.filter((p) => p.status === "accepted");
 
     if (acceptedPlayers.length < 2) {
       return NextResponse.json(
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
     const bracket = generateBracket(acceptedPlayers);
     tournament.bracket = bracket;
     tournament.status = "active";
-    saveTournament(tournament);
+    await saveTournament(tournament);
 
     return NextResponse.json({ bracket });
   }
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
   if (action === "reset_bracket") {
     tournament.bracket = null;
     tournament.status = "registration";
-    saveTournament(tournament);
+    await saveTournament(tournament);
     return NextResponse.json({ message: "Bracket reseteado" });
   }
 
@@ -52,6 +53,6 @@ export async function POST(req: NextRequest) {
   if (maxPlayers !== undefined) tournament.maxPlayers = Number(maxPlayers);
   if (status !== undefined) tournament.status = status;
 
-  saveTournament(tournament);
+  await saveTournament(tournament);
   return NextResponse.json({ tournament });
 }

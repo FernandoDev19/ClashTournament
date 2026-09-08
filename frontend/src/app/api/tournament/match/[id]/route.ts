@@ -11,7 +11,7 @@ export async function PATCH(
   const body = await req.json();
   const { score1, score2, winner } = body;
 
-  const tournament = getTournament();
+  const tournament = await getTournament();
 
   if (!tournament.bracket) {
     return NextResponse.json(
@@ -62,6 +62,6 @@ export async function PATCH(
     return NextResponse.json({ message: "Partido no encontrado" }, { status: 404 });
   }
 
-  saveTournament(tournament);
+  await saveTournament(tournament);
   return NextResponse.json({ bracket: tournament.bracket });
 }

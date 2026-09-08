@@ -8,7 +8,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const player = getPlayerById(id);
+  const player = await getPlayerById(id);
 
   if (!player) {
     return NextResponse.json({ message: "Jugador no encontrado" }, { status: 404 });
@@ -28,7 +28,7 @@ export async function PATCH(
   if (wins !== undefined) player.wins = Number(wins);
   if (losses !== undefined) player.losses = Number(losses);
 
-  upsertPlayer(player);
+  await upsertPlayer(player);
   return NextResponse.json({ player });
 }
 
@@ -38,7 +38,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const deleted = deletePlayer(id);
+  const deleted = await deletePlayer(id);
 
   if (!deleted) {
     return NextResponse.json({ message: "Jugador no encontrado" }, { status: 404 });

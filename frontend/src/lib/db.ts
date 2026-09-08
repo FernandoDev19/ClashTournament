@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { supabase } from "./supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,9 +78,59 @@ function ensureDataDir() {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapSupabasePlayer(row: any): Player {
+  return {
+    id: row.id,
+    tag: row.tag,
+    name: row.name,
+    trophies: Number(row.trophies) || 0,
+    bestTrophies: Number(row.bestTrophies ?? row.best_trophies ?? row.besttrophies) || 0,
+    expLevel: Number(row.expLevel ?? row.exp_level ?? row.explevel) || 1,
+    clan: row.clan ?? null,
+    arena: row.arena ?? null,
+    contact: row.contact ?? "",
+    status: row.status ?? "pending",
+    registeredAt: row.registeredAt ?? row.registered_at ?? row.registeredat ?? new Date().toISOString(),
+    wins: Number(row.wins) || 0,
+    losses: Number(row.losses) || 0,
+  };
+}
+
+function mapPlayerToSupabase(p: Player) {
+  return {
+    id: p.id,
+    tag: p.tag,
+    name: p.name,
+    trophies: p.trophies,
+    besttrophies: p.bestTrophies,
+    explevel: p.expLevel,
+    clan: p.clan,
+    arena: p.arena,
+    contact: p.contact,
+    status: p.status,
+    registeredat: p.registeredAt,
+    wins: p.wins,
+    losses: p.losses,
+  };
+}
+
 // ─── Players ─────────────────────────────────────────────────────────────────
 
-export function getPlayers(): Player[] {
+export async function getPlayers(): Promise<Player[]> {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("players").select("*");
+      if (error) {
+        console.error("[Supabase] getPlayers error:", JSON.stringify(error));
+      } else if (data) {
+        return data.map(mapSupabasePlayer);
+      }
+    } catch (e) {
+      console.error("[Supabase] getPlayers exception:", e);
+    }
+  }
+
   ensureDataDir();
   if (!fs.existsSync(PLAYERS_FILE)) return [];
   try {
@@ -91,7 +142,21 @@ export function getPlayers(): Player[] {
   }
 }
 
-export function savePlayers(players: Player[]): void {
+export async function savePlayers(players: Player[]): Promise<void> {
+  if (supabase) {
+    try {
+      const rows = players.map(mapPlayerToSupabase);
+      const { error } = await supabase.from("players").upsert(rows, { onConflict: "id" });
+      if (error) {
+        console.error("[Supabase] savePlayers error:", JSON.stringify(error));
+      } else {
+        return;
+      }
+    } catch (e) {
+      console.error("[Supabase] savePlayers exception:", e);
+    }
+  }
+
   ensureDataDir();
   fs.writeFileSync(
     PLAYERS_FILE,
@@ -99,35 +164,84 @@ export function savePlayers(players: Player[]): void {
   );
 }
 
-export function getPlayerById(id: string): Player | null {
-  return getPlayers().find((p) => p.id === id) ?? null;
+export async function getPlayerById(id: string): Promise<Player | null> {
+  const players = await getPlayers();
+  return players.find((p) => p.id === id) ?? null;
 }
 
-export function getPlayerByTag(tag: string): Player | null {
+export async function getPlayerByTag(tag: string): Promise<Player | null> {
   const normalizedTag = tag.startsWith("#") ? tag : `#${tag}`;
+  const players = await getPlayers();
   return (
-    getPlayers().find(
+    players.find(
       (p) => p.tag.toUpperCase() === normalizedTag.toUpperCase()
     ) ?? null
   );
 }
 
-export function upsertPlayer(player: Player): void {
-  const players = getPlayers();
+export async function upsertPlayer(player: Player): Promise<void> {
+  if (supabase) {
+    try {
+      const row = mapPlayerToSupabase(player);
+      let { error } = await supabase.from("players").upsert(row, { onConflict: "id" });
+      
+      // If error is PGRST204 (column missing in DB schema), retry with basic fields
+      if (error && error.code === "PGRST204") {
+        const basicRow = {
+          id: player.id,
+          tag: player.tag,
+          name: player.name,
+          trophies: player.trophies,
+          clan: player.clan,
+          arena: player.arena,
+          contact: player.contact,
+          status: player.status,
+          wins: player.wins,
+          losses: player.losses,
+        };
+        const retry = await supabase.from("players").upsert(basicRow, { onConflict: "id" });
+        error = retry.error;
+      }
+
+      if (error) {
+        console.error("[Supabase] upsertPlayer error:", JSON.stringify(error));
+      } else {
+        console.log("[Supabase] upsertPlayer success:", player.id);
+        return;
+      }
+    } catch (e) {
+      console.error("[Supabase] upsertPlayer exception:", e);
+    }
+  }
+
+  const players = await getPlayers();
   const idx = players.findIndex((p) => p.id === player.id);
   if (idx >= 0) {
     players[idx] = player;
   } else {
     players.push(player);
   }
-  savePlayers(players);
+  await savePlayers(players);
 }
 
-export function deletePlayer(id: string): boolean {
-  const players = getPlayers();
+export async function deletePlayer(id: string): Promise<boolean> {
+  if (supabase) {
+    try {
+      const { error } = await supabase.from("players").delete().eq("id", id);
+      if (error) {
+        console.error("[Supabase] deletePlayer error:", JSON.stringify(error));
+      } else {
+        return true;
+      }
+    } catch (e) {
+      console.error("[Supabase] deletePlayer exception:", e);
+    }
+  }
+
+  const players = await getPlayers();
   const filtered = players.filter((p) => p.id !== id);
   if (filtered.length === players.length) return false;
-  savePlayers(filtered);
+  await savePlayers(filtered);
   return true;
 }
 
@@ -141,7 +255,28 @@ const DEFAULT_TOURNAMENT: Tournament = {
   lastUpdated: "",
 };
 
-export function getTournament(): Tournament {
+export async function getTournament(): Promise<Tournament> {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("tournament")
+        .select("*")
+        .eq("id", "current")
+        .single();
+      if (!error && data) {
+        return {
+          tournamentDate: data.tournamentDate ?? data.tournament_date ?? "",
+          maxPlayers: Number(data.maxPlayers ?? data.max_players) || 16,
+          status: data.status ?? "registration",
+          bracket: data.bracket ?? null,
+          lastUpdated: data.lastUpdated ?? data.last_updated ?? "",
+        };
+      }
+    } catch {
+      // fallback
+    }
+  }
+
   ensureDataDir();
   if (!fs.existsSync(TOURNAMENT_FILE)) return DEFAULT_TOURNAMENT;
   try {
@@ -152,7 +287,36 @@ export function getTournament(): Tournament {
   }
 }
 
-export function saveTournament(tournament: Tournament): void {
+export async function saveTournament(tournament: Tournament): Promise<void> {
+  if (supabase) {
+    try {
+      const record = {
+        id: "current",
+        tournament_date: tournament.tournamentDate,
+        max_players: tournament.maxPlayers,
+        status: tournament.status,
+        bracket: tournament.bracket,
+        last_updated: new Date().toISOString(),
+      };
+      let { error } = await supabase.from("tournament").upsert(record, { onConflict: "id" });
+
+      if (error && error.code === "PGRST204") {
+        const basicRecord = {
+          id: "current",
+          status: tournament.status,
+          bracket: tournament.bracket,
+        };
+        const retry = await supabase.from("tournament").upsert(basicRecord, { onConflict: "id" });
+        error = retry.error;
+      }
+
+      if (!error) return;
+      console.error("[Supabase] saveTournament error:", JSON.stringify(error));
+    } catch (e) {
+      console.error("[Supabase] saveTournament exception:", e);
+    }
+  }
+
   ensureDataDir();
   fs.writeFileSync(
     TOURNAMENT_FILE,

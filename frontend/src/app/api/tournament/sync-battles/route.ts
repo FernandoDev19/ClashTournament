@@ -28,7 +28,7 @@ async function fetchPlayerBattlelog(tag: string): Promise<any[]> {
 
 // POST /api/tournament/sync-battles
 export async function POST() {
-  const tournament = getTournament();
+  const tournament = await getTournament();
 
   if (!tournament.bracket) {
     return NextResponse.json(
@@ -158,7 +158,7 @@ export async function POST() {
     }
   }
 
-  saveTournament(tournament);
+  await saveTournament(tournament);
 
   return NextResponse.json({
     message: updatedCount > 0 ? `${updatedCount} partida(s) sincronizada(s)` : "No se detectaron nuevas partidas en la API",
