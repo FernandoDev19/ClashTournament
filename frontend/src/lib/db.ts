@@ -265,11 +265,11 @@ export async function getTournament(): Promise<Tournament> {
         .single();
       if (!error && data) {
         return {
-          tournamentDate: data.tournamentDate ?? data.tournament_date ?? "",
-          maxPlayers: Number(data.maxPlayers ?? data.max_players) || 16,
+          tournamentDate: data.tournamentdate ?? data.tournamentDate ?? data.tournament_date ?? "",
+          maxPlayers: Number(data.maxplayers ?? data.maxPlayers ?? data.max_players) || 16,
           status: data.status ?? "registration",
           bracket: data.bracket ?? null,
-          lastUpdated: data.lastUpdated ?? data.last_updated ?? "",
+          lastUpdated: data.lastupdated ?? data.lastUpdated ?? data.last_updated ?? "",
         };
       }
     } catch {
@@ -292,24 +292,13 @@ export async function saveTournament(tournament: Tournament): Promise<void> {
     try {
       const record = {
         id: "current",
-        tournament_date: tournament.tournamentDate,
-        max_players: tournament.maxPlayers,
+        tournamentdate: tournament.tournamentDate,
+        maxplayers: tournament.maxPlayers,
         status: tournament.status,
         bracket: tournament.bracket,
-        last_updated: new Date().toISOString(),
+        lastupdated: new Date().toISOString(),
       };
-      let { error } = await supabase.from("tournament").upsert(record, { onConflict: "id" });
-
-      if (error && error.code === "PGRST204") {
-        const basicRecord = {
-          id: "current",
-          status: tournament.status,
-          bracket: tournament.bracket,
-        };
-        const retry = await supabase.from("tournament").upsert(basicRecord, { onConflict: "id" });
-        error = retry.error;
-      }
-
+      const { error } = await supabase.from("tournament").upsert(record, { onConflict: "id" });
       if (!error) return;
       console.error("[Supabase] saveTournament error:", JSON.stringify(error));
     } catch (e) {
