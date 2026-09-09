@@ -42,6 +42,7 @@ interface Tournament {
   status: string;
   bracket: {
     rounds: Round[];
+    thirdPlaceMatch?: Match | null;
   } | null;
   acceptedCount: number;
   pendingCount: number;
@@ -52,9 +53,7 @@ interface Tournament {
 function PlayerAvatar({ name }: { name: string; trophies: number }) {
   const initials = name.substring(0, 2).toUpperCase();
   return (
-    <div
-      className="w-7 h-7 rounded-full bg-linear-to-br from-secondary to-tertiary flex items-center justify-center font-extrabold text-white text-xs shrink-0 shadow-md"
-    >
+    <div className="w-7 h-7 rounded-full bg-linear-to-br from-secondary to-tertiary flex items-center justify-center font-extrabold text-white text-xs shrink-0 shadow-md">
       {initials}
     </div>
   );
@@ -69,8 +68,12 @@ function MatchCard({
   round: string;
   onClick?: () => void;
 }) {
-  const p1Won = Boolean(match.winner && match.player1 && match.winner === match.player1.id);
-  const p2Won = Boolean(match.winner && match.player2 && match.winner === match.player2.id);
+  const p1Won = Boolean(
+    match.winner && match.player1 && match.winner === match.player1.id,
+  );
+  const p2Won = Boolean(
+    match.winner && match.player2 && match.winner === match.player2.id,
+  );
   const played = !!match.winner;
 
   const rowClass = (won: boolean | null, tbd: boolean) =>
@@ -78,10 +81,10 @@ function MatchCard({
       tbd
         ? "opacity-40"
         : won
-        ? "bg-secondary/20 border border-secondary/40"
-        : played
-        ? "opacity-50"
-        : "border border-white/5 bg-white/3"
+          ? "bg-secondary/20 border border-secondary/40"
+          : played
+            ? "opacity-50"
+            : "border border-white/5 bg-white/3"
     }`;
 
   return (
@@ -110,15 +113,24 @@ function MatchCard({
       <div className={rowClass(p1Won, !match.player1)}>
         {match.player1 ? (
           <>
-            <PlayerAvatar name={match.player1.name} trophies={match.player1.trophies} />
+            <PlayerAvatar
+              name={match.player1.name}
+              trophies={match.player1.trophies}
+            />
             <div className="flex flex-col min-w-0">
-              <span className={`text-xs font-bold truncate ${p1Won ? "text-white" : "text-neutral"}`}>
+              <span
+                className={`text-xs font-bold truncate ${p1Won ? "text-white" : "text-neutral"}`}
+              >
                 {match.player1.name}
               </span>
-              <span className="text-[10px] text-neutral/50">{match.player1.tag}</span>
+              <span className="text-[10px] text-neutral/50">
+                {match.player1.tag}
+              </span>
             </div>
             {match.score1 !== null && (
-              <span className={`ml-auto text-sm font-extrabold ${p1Won ? "text-secondary" : "text-neutral/40"}`}>
+              <span
+                className={`ml-auto text-sm font-extrabold ${p1Won ? "text-secondary" : "text-neutral/40"}`}
+              >
                 {match.score1}
               </span>
             )}
@@ -136,15 +148,24 @@ function MatchCard({
       <div className={rowClass(p2Won, !match.player2)}>
         {match.player2 ? (
           <>
-            <PlayerAvatar name={match.player2.name} trophies={match.player2.trophies} />
+            <PlayerAvatar
+              name={match.player2.name}
+              trophies={match.player2.trophies}
+            />
             <div className="flex flex-col min-w-0">
-              <span className={`text-xs font-bold truncate ${p2Won ? "text-white" : "text-neutral"}`}>
+              <span
+                className={`text-xs font-bold truncate ${p2Won ? "text-white" : "text-neutral"}`}
+              >
                 {match.player2.name}
               </span>
-              <span className="text-[10px] text-neutral/50">{match.player2.tag}</span>
+              <span className="text-[10px] text-neutral/50">
+                {match.player2.tag}
+              </span>
             </div>
             {match.score2 !== null && (
-              <span className={`ml-auto text-sm font-extrabold ${p2Won ? "text-secondary" : "text-neutral/40"}`}>
+              <span
+                className={`ml-auto text-sm font-extrabold ${p2Won ? "text-secondary" : "text-neutral/40"}`}
+              >
                 {match.score2}
               </span>
             )}
@@ -174,7 +195,9 @@ function RoundColumn({
     <div className="flex flex-col items-center gap-2">
       {/* Round badge */}
       <div className="mb-3 px-4 py-1 rounded-full border border-tertiary/40 bg-tertiary/10">
-        <span className="text-xs font-extrabold text-tertiary uppercase tracking-wider">{label}</span>
+        <span className="text-xs font-extrabold text-tertiary uppercase tracking-wider">
+          {label}
+        </span>
       </div>
       {/* Matches evenly spaced */}
       <div className="flex flex-col justify-around flex-1 gap-6">
@@ -223,7 +246,7 @@ export default function BracketsPage() {
       const data = await res.json();
       if (res.ok && data.bracket) {
         setTournament((prev) =>
-          prev ? { ...prev, bracket: data.bracket } : prev
+          prev ? { ...prev, bracket: data.bracket } : prev,
         );
       }
     } catch {
@@ -294,7 +317,8 @@ export default function BracketsPage() {
               variant="h6"
               className="text-white font-bold md:text-base flex items-center gap-2"
             >
-              Haz clic en cualquier partido para ver el **mazo de cartas** y el detalle del resultado.
+              Haz clic en cualquier partido para ver el **mazo de cartas** y el
+              detalle del resultado.
             </Typography>
           </div>
 
@@ -358,8 +382,8 @@ export default function BracketsPage() {
               El cuadro aún no ha sido generado
             </Typography>
             <Typography variant="small">
-              El torneo está en fase de registros. Tan pronto como el administrador
-              genere las llaves, el cuadro aparecerá aquí.
+              El torneo está en fase de registros. Tan pronto como el
+              administrador genere las llaves, el cuadro aparecerá aquí.
             </Typography>
           </div>
         ) : (
@@ -417,6 +441,28 @@ export default function BracketsPage() {
           </div>
         )}
 
+        {tournament?.bracket?.thirdPlaceMatch && (
+          <div className="flex justify-center mt-8">
+            <div className="flex flex-col items-center gap-2">
+              <div className="mb-1 px-4 py-1 rounded-full border border-amber-500/40 bg-amber-500/10">
+                <span className="text-xs font-extrabold text-amber-300 uppercase tracking-wider">
+                  🥉 Tercer Puesto
+                </span>
+              </div>
+              <MatchCard
+                match={tournament.bracket.thirdPlaceMatch}
+                round="3ER PUESTO"
+                onClick={() =>
+                  setSelectedMatch({
+                    match: tournament.bracket!.thirdPlaceMatch!,
+                    roundLabel: "3er Puesto",
+                  })
+                }
+              />
+            </div>
+          </div>
+        )}
+
         {/* Legend */}
         <div className="mt-8 flex flex-wrap gap-4 items-center">
           <span className="text-xs text-neutral/50 font-semibold uppercase tracking-wider">
@@ -426,7 +472,9 @@ export default function BracketsPage() {
             <div className="w-3 h-3 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold flex items-center justify-center">
               ⚡
             </div>
-            <span className="text-xs text-neutral/70">Autovalidado por API</span>
+            <span className="text-xs text-neutral/70">
+              Autovalidado por API
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded bg-secondary/20 border border-secondary/40" />

@@ -702,25 +702,30 @@ export default function AdminPage() {
             )}
 
             {tournament?.bracket?.thirdPlaceMatch && (
-  <div className="bg-primary border border-amber-500/30 rounded-xl p-4 max-w-xs">
-    <h4 className="text-amber-300 font-bold mb-4 border-b border-white/10 pb-2 text-base flex items-center gap-2">
-      🥉 <span>Tercer Puesto</span>
-    </h4>
-    <AdminMatchCard
-      match={tournament.bracket.thirdPlaceMatch}
-      roundLabel="3er Puesto"
-      onSave={(s1, s2, winnerId) =>
-        handleUpdateMatch(tournament.bracket!.thirdPlaceMatch!.id, s1, s2, winnerId)
-      }
-      onInspect={() =>
-        setSelectedMatch({
-          match: tournament.bracket!.thirdPlaceMatch!,
-          roundLabel: "3er Puesto",
-        })
-      }
-    />
-  </div>
-)}
+              <div className="bg-primary border border-amber-500/30 rounded-xl p-4 max-w-xs">
+                <h4 className="text-amber-300 font-bold mb-4 border-b border-white/10 pb-2 text-base flex items-center gap-2">
+                  🥉 <span>Tercer Puesto</span>
+                </h4>
+                <AdminMatchCard
+                  match={tournament.bracket.thirdPlaceMatch}
+                  roundLabel="3er Puesto"
+                  onSave={(s1, s2, winnerId) =>
+                    handleUpdateMatch(
+                      tournament.bracket!.thirdPlaceMatch!.id,
+                      s1,
+                      s2,
+                      winnerId,
+                    )
+                  }
+                  onInspect={() =>
+                    setSelectedMatch({
+                      match: tournament.bracket!.thirdPlaceMatch!,
+                      roundLabel: "3er Puesto",
+                    })
+                  }
+                />
+              </div>
+            )}
           </div>
         )}
 

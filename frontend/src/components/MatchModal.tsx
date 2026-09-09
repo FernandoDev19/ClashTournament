@@ -1,6 +1,11 @@
 "use client";
 
-import { XMarkIcon, BoltIcon, TrophyIcon, StarIcon } from "@heroicons/react/24/solid";
+import {
+  XMarkIcon,
+  BoltIcon,
+  TrophyIcon,
+  StarIcon,
+} from "@heroicons/react/24/solid";
 import Image from "next/image";
 import type { Match, CardItem } from "@/src/lib/db";
 
@@ -13,7 +18,13 @@ interface MatchModalProps {
   isSyncing?: boolean;
 }
 
-function DeckGrid({ cards, playerName }: { cards?: CardItem[] | null; playerName: string }) {
+function DeckGrid({
+  cards,
+  playerName,
+}: {
+  cards?: CardItem[] | null;
+  playerName: string;
+}) {
   if (!cards || cards.length === 0) {
     return (
       <div className="bg-slate-900/60 border border-white/5 rounded-xl p-4 text-center text-xs text-neutral/50 italic">
@@ -25,7 +36,8 @@ function DeckGrid({ cards, playerName }: { cards?: CardItem[] | null; playerName
   return (
     <div className="flex flex-col gap-2">
       <span className="text-xs font-bold text-neutral block">
-        Mazo utilizado por <span className="text-white font-extrabold">{playerName}</span>:
+        Mazo utilizado por{" "}
+        <span className="text-white font-extrabold">{playerName}</span>:
       </span>
       <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 bg-slate-900/80 border border-white/10 p-3 rounded-xl">
         {cards.map((card, idx) => (
@@ -88,7 +100,12 @@ export default function MatchModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-secondary/10">
           <div className="flex items-center gap-2">
-            <TrophyIcon className="size-5 text-secondary" />
+            {roundLabel.toLowerCase().includes("3er") ||
+            roundLabel.toLowerCase().includes("tercer") ? (
+              <span className="text-lg">🥉</span>
+            ) : (
+              <TrophyIcon className="size-5 text-secondary" />
+            )}
             <span className="text-sm font-extrabold text-white uppercase tracking-wider">
               {roundLabel} · Detalle de Enfrentamiento
             </span>
@@ -118,8 +135,8 @@ export default function MatchModal({
                   {match.winner
                     ? "Ganador definido (Bo3 completado)"
                     : match.score1 !== null || match.score2 !== null
-                    ? "Serie en curso (Bo3)"
-                    : "Partida pendiente por disputar"}
+                      ? "Serie en curso (Bo3)"
+                      : "Partida pendiente por disputar"}
                 </span>
               )}
             </div>
@@ -134,14 +151,18 @@ export default function MatchModal({
           {/* Versus Display */}
           <div className="grid grid-cols-7 items-center gap-2 bg-slate-950/60 border border-white/10 rounded-2xl p-4">
             {/* Player 1 */}
-            <div className={`col-span-3 flex flex-col items-center text-center p-3 rounded-xl ${p1Won ? "bg-secondary/20 border border-secondary/40" : ""}`}>
+            <div
+              className={`col-span-3 flex flex-col items-center text-center p-3 rounded-xl ${p1Won ? "bg-secondary/20 border border-secondary/40" : ""}`}
+            >
               <div className="size-12 rounded-full bg-linear-to-br from-secondary to-tertiary flex items-center justify-center font-black text-white text-lg shadow-md mb-2">
                 {p1?.name ? p1.name.substring(0, 2).toUpperCase() : "?"}
               </div>
               <span className="font-extrabold text-white text-sm sm:text-base truncate max-w-full">
                 {p1?.name ?? "Por definir"}
               </span>
-              <span className="text-xs font-mono text-secondary">{p1?.tag ?? "-"}</span>
+              <span className="text-xs font-mono text-secondary">
+                {p1?.tag ?? "-"}
+              </span>
               <span className="text-xs text-tertiary font-bold mt-1">
                 🏆 {p1?.trophies?.toLocaleString() ?? 0}
               </span>
@@ -162,14 +183,18 @@ export default function MatchModal({
             </div>
 
             {/* Player 2 */}
-            <div className={`col-span-3 flex flex-col items-center text-center p-3 rounded-xl ${p2Won ? "bg-secondary/20 border border-secondary/40" : ""}`}>
+            <div
+              className={`col-span-3 flex flex-col items-center text-center p-3 rounded-xl ${p2Won ? "bg-secondary/20 border border-secondary/40" : ""}`}
+            >
               <div className="size-12 rounded-full bg-linear-to-br from-tertiary to-secondary flex items-center justify-center font-black text-white text-lg shadow-md mb-2">
                 {p2?.name ? p2.name.substring(0, 2).toUpperCase() : "?"}
               </div>
               <span className="font-extrabold text-white text-sm sm:text-base truncate max-w-full">
                 {p2?.name ?? "Por definir"}
               </span>
-              <span className="text-xs font-mono text-secondary">{p2?.tag ?? "-"}</span>
+              <span className="text-xs font-mono text-secondary">
+                {p2?.tag ?? "-"}
+              </span>
               <span className="text-xs text-tertiary font-bold mt-1">
                 🏆 {p2?.trophies?.toLocaleString() ?? 0}
               </span>
@@ -195,7 +220,9 @@ export default function MatchModal({
                 disabled={isSyncing}
                 className="w-full bg-secondary text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-secondary/80 transition-colors disabled:opacity-50 cursor-pointer shadow-lg"
               >
-                <BoltIcon className={`size-5 text-amber-300 ${isSyncing ? "animate-spin" : ""}`} />
+                <BoltIcon
+                  className={`size-5 text-amber-300 ${isSyncing ? "animate-spin" : ""}`}
+                />
                 {isSyncing
                   ? "Buscando partida en Clash Royale..."
                   : "⚡ Sincronizar Batalla en Vivo desde la API"}
