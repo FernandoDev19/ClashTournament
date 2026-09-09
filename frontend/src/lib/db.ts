@@ -62,6 +62,7 @@ export interface Tournament {
       key: string;
       matches: Match[];
     }[];
+    thirdPlaceMatch?: Match | null;
   } | null;
   lastUpdated: string;
 }
@@ -319,91 +320,150 @@ export async function saveTournament(tournament: Tournament): Promise<void> {
 
 // ─── Bracket Generation ───────────────────────────────────────────────────────
 
+function labelForRound(matchesInRound: number): string {
+  switch (matchesInRound) {
+    case 1:
+      return "Final";
+    case 2:
+      return "Semifinal";
+    case 4:
+      return "Cuartos de Final";
+    case 8:
+      return "Octavos de Final";
+    case 16:
+      return "16avos de Final";
+    case 32:
+      return "32avos de Final";
+    default:
+      return `Ronda de ${matchesInRound * 2}`;
+  }
+}
+
+function keyForRound(matchesInRound: number): string {
+  switch (matchesInRound) {
+    case 1:
+      return "final";
+    case 2:
+      return "sf";
+    case 4:
+      return "qf";
+    case 8:
+      return "r16";
+    case 16:
+      return "r32";
+    case 32:
+      return "r64";
+    default:
+      return `r${matchesInRound * 2}`;
+  }
+}
+
 /**
- * Generates a single-elimination bracket from accepted players.
- * Players are seeded by trophies (highest first).
+ * Genera un bracket de eliminación directa a partir de los jugadores aceptados.
+ * Se seedean por trofeos (mayor a menor). Si el número de jugadores no es
+ * potencia de 2, los seeds más altos reciben "bye" (pase automático sin jugar).
+ * Los byes se resuelven al instante para que los índices de cada ronda
+ * siempre cuadren con la ronda siguiente (necesario para propagar ganadores).
  */
-export function generateBracket(players: Player[]): Tournament["bracket"] {
-  // Sort by trophies descending
+export function generateBracket(
+  players: Player[],
+  includeThirdPlace: boolean = false
+): Tournament["bracket"] {
   const seeded = [...players].sort((a, b) => b.trophies - a.trophies);
   const count = seeded.length;
 
   if (count < 2) return null;
 
-  // Find the nearest power of 2 >= count
   const slots = Math.pow(2, Math.ceil(Math.log2(count)));
+  const numRounds = Math.log2(slots);
 
-  // Build R1 matchups with byes if count is not a power of 2
+  // Ronda 1: siempre slots/2 partidos. Si falta rival, es bye automático.
   const r1Matches: Match[] = [];
-  const byes: MatchPlayer[] = [];
-
   for (let i = 0; i < slots / 2; i++) {
     const top = seeded[i] ?? null;
     const bottom = seeded[slots - 1 - i] ?? null;
 
-    if (!top) continue;
+    const p1 = top ? toMatchPlayer(top) : null;
+    const p2 = bottom ? toMatchPlayer(bottom) : null;
 
-    if (!bottom) {
-      // top gets a bye
-      byes.push(toMatchPlayer(top));
-      continue;
-    }
+    let winner: string | null = null;
+    if (p1 && !p2) winner = p1.id;
+    else if (p2 && !p1) winner = p2.id;
 
     r1Matches.push({
       id: `r1-${i + 1}`,
       round: "R1",
-      player1: toMatchPlayer(top),
-      player2: toMatchPlayer(bottom),
-      winner: null,
+      player1: p1,
+      player2: p2,
+      winner,
       score1: null,
       score2: null,
     });
   }
 
-  // Build subsequent rounds as empty placeholders
-  const rounds: Tournament["bracket"] extends null
-    ? never
-    : NonNullable<Tournament["bracket"]>["rounds"] = [];
-
-  const firstRoundLabel =
-    slots === 16
-      ? "16avos"
-      : slots === 8
-      ? "Cuartos"
-      : slots === 4
-      ? "Semis"
-      : "Ronda 1";
-
-  rounds.push({ label: firstRoundLabel, key: "r1", matches: r1Matches });
-
-  // Generate empty placeholder rounds
-  const roundDefs = [
-    { label: "Cuartos", key: "qf" },
-    { label: "Semis", key: "sf" },
-    { label: "Final", key: "final" },
+  const rounds: NonNullable<Tournament["bracket"]>["rounds"] = [
+    {
+      label: labelForRound(r1Matches.length),
+      key: keyForRound(r1Matches.length),
+      matches: r1Matches,
+    },
   ];
 
-  let prevMatchCount = r1Matches.length + byes.length;
+  // Rondas siguientes: se arman a partir de la anterior, propagando byes ya resueltos.
+  let prevMatches = r1Matches;
+  for (let r = 1; r < numRounds; r++) {
+    const matchCount = prevMatches.length / 2;
+    const roundKey = keyForRound(matchCount);
+    const roundLabel = labelForRound(matchCount);
 
-  for (const rd of roundDefs) {
-    prevMatchCount = Math.ceil(prevMatchCount / 2);
-    if (prevMatchCount < 1) break;
+    const matches: Match[] = [];
+    for (let i = 0; i < matchCount; i++) {
+      const m1 = prevMatches[i * 2];
+      const m2 = prevMatches[i * 2 + 1];
 
-    const matches: Match[] = Array.from({ length: prevMatchCount }, (_, i) => ({
-      id: `${rd.key}-${i + 1}`,
-      round: rd.key.toUpperCase(),
-      player1: byes[i * 2] ?? null,
-      player2: byes[i * 2 + 1] ?? null,
-      winner: null,
-      score1: null,
-      score2: null,
-    }));
+      const p1 =
+        m1.winner === m1.player1?.id
+          ? m1.player1
+          : m1.winner === m1.player2?.id
+          ? m1.player2
+          : null;
+      const p2 =
+        m2.winner === m2.player1?.id
+          ? m2.player1
+          : m2.winner === m2.player2?.id
+          ? m2.player2
+          : null;
 
-    rounds.push({ label: rd.label, key: rd.key, matches });
-    byes.length = 0; // clear byes after placing in next round
+      matches.push({
+        id: `${roundKey}-${i + 1}`,
+        round: roundKey.toUpperCase(),
+        player1: p1,
+        player2: p2,
+        winner: null,
+        score1: null,
+        score2: null,
+      });
+    }
+
+    rounds.push({ label: roundLabel, key: roundKey, matches });
+    prevMatches = matches;
   }
 
-  return { rounds };
+  // Partido por el 3er puesto: solo tiene sentido si hay semifinal (2+ rondas).
+  const thirdPlaceMatch: Match | null =
+    includeThirdPlace && numRounds >= 2
+      ? {
+          id: "third-place",
+          round: "3ER PUESTO",
+          player1: null,
+          player2: null,
+          winner: null,
+          score1: null,
+          score2: null,
+        }
+      : null;
+
+  return { rounds, thirdPlaceMatch };
 }
 
 function toMatchPlayer(player: Player): MatchPlayer {

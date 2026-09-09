@@ -68,6 +68,7 @@ interface Tournament {
   status: string;
   bracket: {
     rounds: Round[];
+    thirdPlaceMatch?: Match | null;
   } | null;
   acceptedCount: number;
   pendingCount: number;
@@ -77,6 +78,7 @@ export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [includeThirdPlace, setIncludeThirdPlace] = useState(false);
 
   const [activeTab, setActiveTab] = useState<
     "pending" | "accepted" | "bracket" | "config"
@@ -159,7 +161,7 @@ export default function AdminPage() {
 
   const updatePlayerStatus = async (
     id: string,
-    status: "accepted" | "rejected" | "pending"
+    status: "accepted" | "rejected" | "pending",
   ) => {
     try {
       const res = await fetch(`/api/players/${id}`, {
@@ -197,7 +199,10 @@ export default function AdminPage() {
       const res = await fetch("/api/tournament", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "generate_bracket" }),
+        body: JSON.stringify({
+          action: "generate_bracket",
+          thirdPlace: includeThirdPlace,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -234,7 +239,7 @@ export default function AdminPage() {
   const handleResetBracket = async () => {
     if (
       !confirm(
-        "¿Deseas reiniciar el bracket actual? Se perderán los marcadores."
+        "¿Deseas reiniciar el bracket actual? Se perderán los marcadores.",
       )
     )
       return;
@@ -257,7 +262,7 @@ export default function AdminPage() {
     matchId: string,
     score1: number,
     score2: number,
-    winnerId: string | null
+    winnerId: string | null,
   ) => {
     try {
       const res = await fetch(`/api/tournament/match/${matchId}`, {
@@ -407,7 +412,9 @@ export default function AdminPage() {
             <div className="flex items-center gap-3">
               <TrophyIcon className="size-8 text-secondary" />
               <div>
-                <span className="text-xs text-neutral block">Estado Bracket</span>
+                <span className="text-xs text-neutral block">
+                  Estado Bracket
+                </span>
                 <span className="text-lg font-bold text-white uppercase">
                   {tournament?.bracket ? "Generado" : "Pendiente"}
                 </span>
@@ -616,6 +623,18 @@ export default function AdminPage() {
                 {acceptedPlayers.length})
               </button>
 
+              {!tournament?.bracket && (
+                <label className="flex items-center gap-2 text-xs text-neutral font-bold cursor-pointer select-none px-2">
+                  <input
+                    type="checkbox"
+                    checked={includeThirdPlace}
+                    onChange={(e) => setIncludeThirdPlace(e.target.checked)}
+                    className="size-4 accent-secondary cursor-pointer"
+                  />
+                  Incluir partido por el 3er puesto
+                </label>
+              )}
+
               {tournament?.bracket && (
                 <>
                   <button
@@ -623,7 +642,9 @@ export default function AdminPage() {
                     disabled={syncing}
                     className="bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 transition-colors disabled:opacity-40 cursor-pointer text-sm"
                   >
-                    <BoltIcon className={`size-5 ${syncing ? "animate-spin" : ""}`} />
+                    <BoltIcon
+                      className={`size-5 ${syncing ? "animate-spin" : ""}`}
+                    />
                     ⚡ Auto-Sincronizar Partidas API
                   </button>
 
@@ -679,6 +700,27 @@ export default function AdminPage() {
                 ))}
               </div>
             )}
+
+            {tournament?.bracket?.thirdPlaceMatch && (
+  <div className="bg-primary border border-amber-500/30 rounded-xl p-4 max-w-xs">
+    <h4 className="text-amber-300 font-bold mb-4 border-b border-white/10 pb-2 text-base flex items-center gap-2">
+      🥉 <span>Tercer Puesto</span>
+    </h4>
+    <AdminMatchCard
+      match={tournament.bracket.thirdPlaceMatch}
+      roundLabel="3er Puesto"
+      onSave={(s1, s2, winnerId) =>
+        handleUpdateMatch(tournament.bracket!.thirdPlaceMatch!.id, s1, s2, winnerId)
+      }
+      onInspect={() =>
+        setSelectedMatch({
+          match: tournament.bracket!.thirdPlaceMatch!,
+          roundLabel: "3er Puesto",
+        })
+      }
+    />
+  </div>
+)}
           </div>
         )}
 

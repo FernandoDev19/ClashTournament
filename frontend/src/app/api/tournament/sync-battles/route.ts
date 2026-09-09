@@ -33,7 +33,7 @@ export async function POST() {
   if (!tournament.bracket) {
     return NextResponse.json(
       { message: "No hay bracket activo para sincronizar" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -100,9 +100,14 @@ export async function POST() {
 
         // Get decks and timestamp from the most recent battle played
         const mostRecentBattle = matchBattles[0];
-        const teamIsP1 = mostRecentBattle.team?.[0]?.tag?.toUpperCase() === tag1;
-        const p1Data = teamIsP1 ? mostRecentBattle.team?.[0] : mostRecentBattle.opponent?.[0];
-        const p2Data = teamIsP1 ? mostRecentBattle.opponent?.[0] : mostRecentBattle.team?.[0];
+        const teamIsP1 =
+          mostRecentBattle.team?.[0]?.tag?.toUpperCase() === tag1;
+        const p1Data = teamIsP1
+          ? mostRecentBattle.team?.[0]
+          : mostRecentBattle.opponent?.[0];
+        const p2Data = teamIsP1
+          ? mostRecentBattle.opponent?.[0]
+          : mostRecentBattle.team?.[0];
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const deck1: CardItem[] = (p1Data?.cards || []).map((c: any) => ({
@@ -134,7 +139,9 @@ export async function POST() {
 
           updatedCount++;
           if (winnerId) {
-            syncedMatches.push(`${match.player1.name} (${wins1}) vs ${match.player2.name} (${wins2})`);
+            syncedMatches.push(
+              `${match.player1.name} (${wins1}) vs ${match.player2.name} (${wins2})`,
+            );
           }
 
           // Propagate winner to next round (or clear if null/undecided)
@@ -144,12 +151,33 @@ export async function POST() {
             const nextMatch = nextRound.matches[nextMatchIndex];
             if (nextMatch) {
               const winnerPlayer = winnerId
-                ? (match.player1.id === winnerId ? match.player1 : match.player2)
+                ? match.player1.id === winnerId
+                  ? match.player1
+                  : match.player2
                 : null;
               if (mIdx % 2 === 0) {
                 nextMatch.player1 = winnerPlayer;
               } else {
                 nextMatch.player2 = winnerPlayer;
+              }
+            }
+
+            const isSemifinalRound =
+              rIdx === tournament.bracket.rounds.length - 2;
+            if (isSemifinalRound && tournament.bracket.thirdPlaceMatch) {
+              const loserPlayer = winnerId
+                ? winnerId === match.player1.id
+                  ? match.player2
+                  : match.player1
+                : null;
+              const tp = tournament.bracket.thirdPlaceMatch;
+              const slot: "player1" | "player2" =
+                mIdx % 2 === 0 ? "player1" : "player2";
+              if (tp[slot]?.id !== loserPlayer?.id) {
+                tp[slot] = loserPlayer;
+                tp.winner = null;
+                tp.score1 = null;
+                tp.score2 = null;
               }
             }
           }
@@ -161,7 +189,10 @@ export async function POST() {
   await saveTournament(tournament);
 
   return NextResponse.json({
-    message: updatedCount > 0 ? `${updatedCount} partida(s) sincronizada(s)` : "No se detectaron nuevas partidas en la API",
+    message:
+      updatedCount > 0
+        ? `${updatedCount} partida(s) sincronizada(s)`
+        : "No se detectaron nuevas partidas en la API",
     updatedCount,
     syncedMatches,
     bracket: tournament.bracket,

@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
   const tournament = await getTournament();
 
-  if (action === "generate_bracket") {
+ if (action === "generate_bracket") {
     const allPlayers = await getPlayers();
     const acceptedPlayers = allPlayers.filter((p) => p.status === "accepted");
 
@@ -33,13 +33,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const bracket = generateBracket(acceptedPlayers);
+    const bracket = generateBracket(acceptedPlayers, Boolean(body.thirdPlace));
     tournament.bracket = bracket;
     tournament.status = "active";
     await saveTournament(tournament);
 
     return NextResponse.json({ bracket });
-  }
+}
 
   if (action === "reset_bracket") {
     tournament.bracket = null;
