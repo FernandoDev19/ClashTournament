@@ -27,10 +27,32 @@ async function fetchPlayerBattlelog(tag: string): Promise<any[]> {
 }
 
 /**
+ * Convierte el formato de fecha de Clash Royale (ej. "20260914T202518.000Z") o estándar a Date.
+ */
+function parseCRBattleTime(battleTimeStr: string): Date | null {
+  if (!battleTimeStr) return null;
+  // Si viene en formato 20260914T202518.000Z
+  if (battleTimeStr.length >= 15 && !battleTimeStr.includes("-")) {
+    const y = battleTimeStr.substring(0, 4);
+    const m = battleTimeStr.substring(4, 6);
+    const d = battleTimeStr.substring(6, 8);
+    const rest = battleTimeStr.substring(9); // 202518.000Z
+    const hh = rest.substring(0, 2);
+    const mm = rest.substring(2, 4);
+    const ss = rest.substring(4);
+    const formattedStr = `${y}-${m}-${d}T${hh}:${mm}:${ss}`;
+    const dt = new Date(formattedStr);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+  const dt = new Date(battleTimeStr);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+
+/**
  * Intenta sincronizar un partido individual (Bo3) contra el battlelog de la API.
  * Devuelve true si el partido cambió (score o ganador).
  */
-async function syncSingleMatch(match: Match): Promise<boolean> {
+async function syncSingleMatch(match: Match, minTimestamp: number | null): Promise<boolean> {
   if (!match.player1 || !match.player2) return false;
 
   const tag1 = match.player1.tag.toUpperCase();
@@ -42,10 +64,21 @@ async function syncSingleMatch(match: Match): Promise<boolean> {
   const matchBattles = battles.filter((b: any) => {
     const teamTag = b.team?.[0]?.tag?.toUpperCase();
     const oppTag = b.opponent?.[0]?.tag?.toUpperCase();
-    return (
+    const isMatchBetweenPlayers =
       (teamTag === tag1 && oppTag === tag2) ||
-      (teamTag === tag2 && oppTag === tag1)
-    );
+      (teamTag === tag2 && oppTag === tag1);
+
+    if (!isMatchBetweenPlayers) return false;
+
+    // Si tenemos una fecha límite (ej. fecha del torneo o de creación del bracket), descartar batallas previas
+    if (minTimestamp && b.battleTime) {
+      const bDate = parseCRBattleTime(b.battleTime);
+      if (bDate && bDate.getTime() < minTimestamp) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
   if (matchBattles.length === 0) return false;
@@ -123,6 +156,17 @@ export async function POST() {
     );
   }
 
+  // Determinar la fecha/hora mínima para considerar batallas válidas del torneo
+  let minTimestamp: number | null = null;
+  if (tournament.bracket.createdAt) {
+    const dt = new Date(tournament.bracket.createdAt);
+    if (!isNaN(dt.getTime())) minTimestamp = dt.getTime();
+  } else if (tournament.tournamentDate) {
+    // Si tournamentDate es YYYY-MM-DD o ISO, tomar el inicio de ese día en UTC
+    const dt = new Date(tournament.tournamentDate);
+    if (!isNaN(dt.getTime())) minTimestamp = dt.getTime();
+  }
+
   let updatedCount = 0;
   const syncedMatches: string[] = [];
 
@@ -131,7 +175,7 @@ export async function POST() {
 
     for (let mIdx = 0; mIdx < round.matches.length; mIdx++) {
       const match = round.matches[mIdx];
-      const changed = await syncSingleMatch(match);
+      const changed = await syncSingleMatch(match, minTimestamp);
 
       if (changed) {
         updatedCount++;
@@ -186,7 +230,7 @@ export async function POST() {
 
   // Sincronizar también el partido por el 3er puesto (no propaga a ninguna ronda)
   if (tournament.bracket.thirdPlaceMatch) {
-    const changed = await syncSingleMatch(tournament.bracket.thirdPlaceMatch);
+    const changed = await syncSingleMatch(tournament.bracket.thirdPlaceMatch, minTimestamp);
     if (changed) {
       updatedCount++;
       const tp = tournament.bracket.thirdPlaceMatch;

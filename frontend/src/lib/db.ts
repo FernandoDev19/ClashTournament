@@ -57,6 +57,7 @@ export interface Tournament {
   maxPlayers: number;
   status: TournamentStatus;
   bracket: {
+    createdAt?: string;
     rounds: {
       label: string;
       key: string;
@@ -463,7 +464,7 @@ export function generateBracket(
         }
       : null;
 
-  return { rounds, thirdPlaceMatch };
+  return { createdAt: new Date().toISOString(), rounds, thirdPlaceMatch };
 }
 
 function toMatchPlayer(player: Player): MatchPlayer {
