@@ -68,6 +68,14 @@ export interface Tournament {
   lastUpdated: string;
 }
 
+// Helpers
+
+function failInProd(context: string, err: unknown) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(`[Supabase] ${context}: ${JSON.stringify(err)}`);
+  }
+}
+
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -87,13 +95,18 @@ function mapSupabasePlayer(row: any): Player {
     tag: row.tag,
     name: row.name,
     trophies: Number(row.trophies) || 0,
-    bestTrophies: Number(row.bestTrophies ?? row.best_trophies ?? row.besttrophies) || 0,
+    bestTrophies:
+      Number(row.bestTrophies ?? row.best_trophies ?? row.besttrophies) || 0,
     expLevel: Number(row.expLevel ?? row.exp_level ?? row.explevel) || 1,
     clan: row.clan ?? null,
     arena: row.arena ?? null,
     contact: row.contact ?? "",
     status: row.status ?? "pending",
-    registeredAt: row.registeredAt ?? row.registered_at ?? row.registeredat ?? new Date().toISOString(),
+    registeredAt:
+      row.registeredAt ??
+      row.registered_at ??
+      row.registeredat ??
+      new Date().toISOString(),
     wins: Number(row.wins) || 0,
     losses: Number(row.losses) || 0,
   };
@@ -124,12 +137,12 @@ export async function getPlayers(): Promise<Player[]> {
     try {
       const { data, error } = await supabase.from("players").select("*");
       if (error) {
-        console.error("[Supabase] getPlayers error:", JSON.stringify(error));
+        failInProd("getPlayers error", error);
       } else if (data) {
         return data.map(mapSupabasePlayer);
       }
     } catch (e) {
-      console.error("[Supabase] getPlayers exception:", e);
+      failInProd("getPlayers exception", e);
     }
   }
 
@@ -148,21 +161,23 @@ export async function savePlayers(players: Player[]): Promise<void> {
   if (supabase) {
     try {
       const rows = players.map(mapPlayerToSupabase);
-      const { error } = await supabase.from("players").upsert(rows, { onConflict: "id" });
+      const { error } = await supabase
+        .from("players")
+        .upsert(rows, { onConflict: "id" });
       if (error) {
-        console.error("[Supabase] savePlayers error:", JSON.stringify(error));
+        failInProd("savePlayers error", error);
       } else {
         return;
       }
     } catch (e) {
-      console.error("[Supabase] savePlayers exception:", e);
+      failInProd("savePlayers exception", e);
     }
   }
 
   ensureDataDir();
   fs.writeFileSync(
     PLAYERS_FILE,
-    JSON.stringify({ players, lastUpdated: new Date().toISOString() }, null, 2)
+    JSON.stringify({ players, lastUpdated: new Date().toISOString() }, null, 2),
   );
 }
 
@@ -175,9 +190,8 @@ export async function getPlayerByTag(tag: string): Promise<Player | null> {
   const normalizedTag = tag.startsWith("#") ? tag : `#${tag}`;
   const players = await getPlayers();
   return (
-    players.find(
-      (p) => p.tag.toUpperCase() === normalizedTag.toUpperCase()
-    ) ?? null
+    players.find((p) => p.tag.toUpperCase() === normalizedTag.toUpperCase()) ??
+    null
   );
 }
 
@@ -185,8 +199,10 @@ export async function upsertPlayer(player: Player): Promise<void> {
   if (supabase) {
     try {
       const row = mapPlayerToSupabase(player);
-      let { error } = await supabase.from("players").upsert(row, { onConflict: "id" });
-      
+      let { error } = await supabase
+        .from("players")
+        .upsert(row, { onConflict: "id" });
+
       // If error is PGRST204 (column missing in DB schema), retry with basic fields
       if (error && error.code === "PGRST204") {
         const basicRow = {
@@ -201,18 +217,20 @@ export async function upsertPlayer(player: Player): Promise<void> {
           wins: player.wins,
           losses: player.losses,
         };
-        const retry = await supabase.from("players").upsert(basicRow, { onConflict: "id" });
+        const retry = await supabase
+          .from("players")
+          .upsert(basicRow, { onConflict: "id" });
         error = retry.error;
       }
 
       if (error) {
-        console.error("[Supabase] upsertPlayer error:", JSON.stringify(error));
+        failInProd("upsertPlayer error", error);
       } else {
         console.log("[Supabase] upsertPlayer success:", player.id);
         return;
       }
     } catch (e) {
-      console.error("[Supabase] upsertPlayer exception:", e);
+      failInProd("upsertPlayer exception", e);
     }
   }
 
@@ -231,12 +249,12 @@ export async function deletePlayer(id: string): Promise<boolean> {
     try {
       const { error } = await supabase.from("players").delete().eq("id", id);
       if (error) {
-        console.error("[Supabase] deletePlayer error:", JSON.stringify(error));
+        failInProd("deletePlayer error", error);
       } else {
         return true;
       }
     } catch (e) {
-      console.error("[Supabase] deletePlayer exception:", e);
+      failInProd("deletePlayer exception", e);
     }
   }
 
@@ -267,11 +285,18 @@ export async function getTournament(): Promise<Tournament> {
         .single();
       if (!error && data) {
         return {
-          tournamentDate: data.tournamentdate ?? data.tournamentDate ?? data.tournament_date ?? "",
-          maxPlayers: Number(data.maxplayers ?? data.maxPlayers ?? data.max_players) || 16,
+          tournamentDate:
+            data.tournamentdate ??
+            data.tournamentDate ??
+            data.tournament_date ??
+            "",
+          maxPlayers:
+            Number(data.maxplayers ?? data.maxPlayers ?? data.max_players) ||
+            16,
           status: data.status ?? "registration",
           bracket: data.bracket ?? null,
-          lastUpdated: data.lastupdated ?? data.lastUpdated ?? data.last_updated ?? "",
+          lastUpdated:
+            data.lastupdated ?? data.lastUpdated ?? data.last_updated ?? "",
         };
       }
     } catch {
@@ -300,11 +325,13 @@ export async function saveTournament(tournament: Tournament): Promise<void> {
         bracket: tournament.bracket,
         lastupdated: new Date().toISOString(),
       };
-      const { error } = await supabase.from("tournament").upsert(record, { onConflict: "id" });
+      const { error } = await supabase
+        .from("tournament")
+        .upsert(record, { onConflict: "id" });
       if (!error) return;
-      console.error("[Supabase] saveTournament error:", JSON.stringify(error));
+      failInProd("saveTournament error", error);
     } catch (e) {
-      console.error("[Supabase] saveTournament exception:", e);
+      failInProd("saveTournament exception", e);
     }
   }
 
@@ -314,8 +341,8 @@ export async function saveTournament(tournament: Tournament): Promise<void> {
     JSON.stringify(
       { ...tournament, lastUpdated: new Date().toISOString() },
       null,
-      2
-    )
+      2,
+    ),
   );
 }
 
@@ -359,6 +386,15 @@ function keyForRound(matchesInRound: number): string {
   }
 }
 
+function seedOrder(slots: number): number[] {
+  let order = [1];
+  while (order.length < slots) {
+    const n = order.length * 2 + 1;
+    order = order.flatMap((s) => [s, n - s]);
+  }
+  return order;
+}
+
 /**
  * Genera un bracket de eliminación directa a partir de los jugadores aceptados.
  * Se seedean por trofeos (mayor a menor). Si el número de jugadores no es
@@ -368,7 +404,7 @@ function keyForRound(matchesInRound: number): string {
  */
 export function generateBracket(
   players: Player[],
-  includeThirdPlace: boolean = false
+  includeThirdPlace: boolean = false,
 ): Tournament["bracket"] {
   const seeded = [...players].sort((a, b) => b.trophies - a.trophies);
   const count = seeded.length;
@@ -378,11 +414,13 @@ export function generateBracket(
   const slots = Math.pow(2, Math.ceil(Math.log2(count)));
   const numRounds = Math.log2(slots);
 
+  const order = seedOrder(slots);
+
   // Ronda 1: siempre slots/2 partidos. Si falta rival, es bye automático.
   const r1Matches: Match[] = [];
   for (let i = 0; i < slots / 2; i++) {
-    const top = seeded[i] ?? null;
-    const bottom = seeded[slots - 1 - i] ?? null;
+    const top = seeded[order[i * 2] - 1] ?? null;
+    const bottom = seeded[order[i * 2 + 1] - 1] ?? null;
 
     const p1 = top ? toMatchPlayer(top) : null;
     const p2 = bottom ? toMatchPlayer(bottom) : null;
@@ -426,14 +464,14 @@ export function generateBracket(
         m1.winner === m1.player1?.id
           ? m1.player1
           : m1.winner === m1.player2?.id
-          ? m1.player2
-          : null;
+            ? m1.player2
+            : null;
       const p2 =
         m2.winner === m2.player1?.id
           ? m2.player1
           : m2.winner === m2.player2?.id
-          ? m2.player2
-          : null;
+            ? m2.player2
+            : null;
 
       matches.push({
         id: `${roundKey}-${i + 1}`,

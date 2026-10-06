@@ -107,9 +107,7 @@ export default function AdminPage() {
   const fetchData = useCallback(async () => {
     try {
       const [resPlayers, resTourney] = await Promise.all([
-        fetch("/api/players?status=all", {
-          headers: { "x-admin-auth": "true" },
-        }),
+        fetch("/api/players?status=all"),
         fetch("/api/tournament"),
       ]);
 
@@ -130,11 +128,12 @@ export default function AdminPage() {
   }, [showMsg]);
 
   useEffect(() => {
-    const isAuth = sessionStorage.getItem("admin_auth");
-    if (isAuth === "true") {
-      setAuthenticated(true);
-      fetchData();
-    }
+    fetch("/api/admin/session")
+      .then((r) => r.json())
+      .then((d) => {
+        setAuthenticated(d.authenticated);
+        if (d.authenticated) fetchData();
+      });
   }, [fetchData]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -148,7 +147,6 @@ export default function AdminPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        sessionStorage.setItem("admin_auth", "true");
         setAuthenticated(true);
         fetchData();
       } else {
@@ -359,7 +357,7 @@ export default function AdminPage() {
           <div className="flex gap-2">
             <button
               onClick={() => {
-                sessionStorage.removeItem("admin_auth");
+                fetch("/api/admin/login", { method: "DELETE" });
                 setAuthenticated(false);
               }}
               className="px-4 py-2 text-xs font-bold rounded-lg text-neutral border border-neutral/30 hover:bg-white/5 transition-colors cursor-pointer"

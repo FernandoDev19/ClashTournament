@@ -1,37 +1,14 @@
 "use client";
 
-import {
-  Button,
-  Collapse,
-  Navbar,
-  Typography,
-} from "@material-tailwind/react";
+import { Button, Collapse, Navbar, Typography } from "@material-tailwind/react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export default function Header() {
   const [openNav, setOpenNav] = useState(false);
   const pathname = usePathname();
-  const [isMobile, setIsMobile] = useState(false);
-  
-  useEffect(() => {
-       function handleResize() {
-      if (window.innerWidth >= 768) {
-        setOpenNav(false);
-        setIsMobile(false);
-      } else {
-        setIsMobile(true);
-      }
-    }
-
-    window.addEventListener('resize', handleResize);
-    handleResize(); 
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  console.log(isMobile)
 
   const navList = (
     <ul className="mt-2 mb-4 flex flex-col gap-2 lg:mb-0 lg:mt-0 md:flex-row lg:items-center lg:gap-6">
@@ -84,7 +61,7 @@ export default function Header() {
         />
       </Typography>
 
-      <Typography
+      {/* <Typography
         as="li"
         variant="small"
         color="blue-gray"
@@ -99,7 +76,7 @@ export default function Header() {
         <hr
           className={`${pathname === "/admin" ? "border-secondary" : "hidden"}`}
         />
-      </Typography>
+      </Typography> */}
     </ul>
   );
 
@@ -107,26 +84,24 @@ export default function Header() {
     <header className="sticky top-0 z-1000">
       <Navbar className="shadow-lg shadow-secondary/25 bg-primary h-max max-w-full border-none rounded-none px-4 py-2 lg:px-8 lg:py-4">
         <div className="flex items-center justify-between text-blue-gray-900">
-          <div className={`${!isMobile ? "w-1/3" : "w-full"}`}>
+          <div className="w-full md:w-1/3">
             <Link href="/" className="flex items-center gap-3" title="Home">
               <Image src="/favicon.ico" alt="Logo" width={50} height={50} />
-              <Typography variant="h5" className="text-secondary font-extrabold">
+              <Typography
+                variant="h5"
+                className="text-secondary font-extrabold"
+              >
                 Torneo Clash Royale
               </Typography>
             </Link>
           </div>
 
-          <div
-            className={`w-1/3 ${!isMobile ? "flex justify-center" : "hidden"}`}
-          >
+          <div className={"hidden md:flex md:w-1/3 justify-center"}>
             {navList}
           </div>
 
           <div className="flex items-center justify-end gap-4 w-1/3">
-            <Link
-              href="/register"
-              className={`${!isMobile ? "flex" : "hidden"}`}
-            >
+            <Link href="/register" className="hidden md:flex">
               <Button
                 size="sm"
                 className="bg-secondary text-white rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors duration-300 ease"
@@ -173,22 +148,24 @@ export default function Header() {
           </div>
         </div>
 
-        <Collapse open={openNav}>
-          <div className={`${openNav ? "flex py-4" : "hidden"} flex-col`}>
-            {navList}
-            <div className="flex items-center gap-x-1">
-              <Link href="/register">
-                <Button
-                  fullWidth
-                  size="sm"
-                  className="bg-secondary text-white rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors duration-300 ease"
-                >
-                  <span>Registrarse</span>
-                </Button>
-              </Link>
+        <div className="md:hidden">
+          <Collapse open={openNav}>
+            <div className={`${openNav ? "flex py-4" : "hidden"} flex-col`}>
+              {navList}
+              <div className="flex items-center gap-x-1">
+                <Link href="/register">
+                  <Button
+                    fullWidth
+                    size="sm"
+                    className="bg-secondary text-white rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors duration-300 ease"
+                  >
+                    <span>Registrarse</span>
+                  </Button>
+                </Link>
+              </div>
             </div>
-          </div>
-        </Collapse>
+          </Collapse>
+        </div>
       </Navbar>
     </header>
   );

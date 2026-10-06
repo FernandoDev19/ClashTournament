@@ -1,5 +1,3 @@
-"use client";
-
 import BracketsPage from "@/src/views/public/brackets/BracketsPage";
 
 export const dynamic = "force-dynamic";

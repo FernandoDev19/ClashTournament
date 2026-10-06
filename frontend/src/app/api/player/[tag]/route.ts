@@ -1,3 +1,5 @@
+import { crFetch, normalizeTag, TAG_REGEX } from "@/src/lib/clash";
+import { Player } from "@/src/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 
 const CR_API_TOKEN = process.env.CR_API_TOKEN ?? "";
@@ -8,35 +10,31 @@ export async function GET(
 ) {
   const { tag } = await params;
 
-  // El tag puede llegar con o sin #; la API requiere %23 en lugar de #
-  const encodedTag = encodeURIComponent(
-    tag.startsWith("#") ? tag : `#${tag}`
-  );
+  if (!TAG_REGEX.test(tag)) {
+    return NextResponse.json(
+      { message: "Tag de Clash Royale inválido" },
+      { status: 400 }
+    );
+  }
 
-  const url = `https://proxy.royaleapi.dev/v1/players/${encodedTag}`;
+  const encodedTag = encodeURIComponent(normalizeTag(tag));
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${CR_API_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      // No cachear: necesitamos datos frescos del jugador
-      cache: "no-store",
-    });
+    const response = await crFetch(`/players/${encodedTag}`)
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
       return NextResponse.json(
         {
           message:
-            error?.message ?? `Error ${response.status} de la API de Clash Royale`,
+            response.message ?? `Error ${response.status} de la API de Clash Royale`,
         },
         { status: response.status }
       );
     }
 
-    const data = await response.json();
+    const data = response.data as Omit<Player, "arena"> & {
+      arena: { id: number; name: string, icon: string };
+    };
 
     // Retornamos solo los campos relevantes
     return NextResponse.json({

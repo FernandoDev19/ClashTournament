@@ -6,6 +6,7 @@ import { Chip, Typography } from "@material-tailwind/react";
 import { useEffect, useState, useCallback } from "react";
 import MatchModal from "@/src/components/MatchModal";
 import type { CardItem } from "@/src/lib/db";
+import LiveStream from "@/src/components/LiveStream";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -219,7 +220,6 @@ function RoundColumn({
 export default function BracketsPage() {
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<{
     match: Match;
     roundLabel: string;
@@ -237,40 +237,13 @@ export default function BracketsPage() {
     }
   }, []);
 
-  const syncBattles = useCallback(async () => {
-    try {
-      setSyncing(true);
-      const res = await fetch("/api/tournament/sync-battles", {
-        method: "POST",
-      });
-      const data = await res.json();
-      if (res.ok && data.bracket) {
-        setTournament((prev) =>
-          prev ? { ...prev, bracket: data.bracket } : prev,
-        );
-      }
-    } catch {
-      // ignore
-    } finally {
-      setSyncing(false);
-    }
-  }, []);
-
   useEffect(() => {
     fetchTournament();
-
-    // Auto-sync battles every 15 seconds, but only when a bracket is active
-    const interval = setInterval(() => {
-      setTournament((prev) => {
-        if (prev?.bracket) {
-          syncBattles();
-        }
-        return prev;
-      });
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") fetchTournament();
     }, 15000);
-
-    return () => clearInterval(interval);
-  }, [fetchTournament, syncBattles]);
+    return () => clearInterval(id);
+  }, [fetchTournament]);
 
   const rounds = tournament?.bracket?.rounds ?? [];
 
@@ -303,7 +276,7 @@ export default function BracketsPage() {
             <div className="flex items-center gap-3 mb-2">
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-bold animate-pulse">
                 <span className="size-2 rounded-full bg-red-500 animate-ping" />
-                <span>En Vivo (Auto-sync 15s)</span>
+                <span>En Vivo</span>
               </div>
               <FireIcon className="size-5 text-tertiary" />
             </div>
@@ -317,14 +290,15 @@ export default function BracketsPage() {
               variant="h6"
               className="text-white font-bold md:text-base flex items-center gap-2"
             >
-              Haz clic en cualquier partido para ver el **mazo de cartas** y el
+              Haz clic en cualquier partido para ver el{" "}
+              <strong className="text-secondary">mazo de cartas</strong> y el
               detalle del resultado.
             </Typography>
           </div>
 
           {/* Progress & Live Sync button */}
           <div
-            className="rounded-xl border border-secondary/30 bg-primary/80 p-5 min-w-[240px] flex flex-col gap-3"
+            className="rounded-xl border border-secondary/30 bg-primary/80 p-5 min-w-60 flex flex-col gap-3"
             style={{ boxShadow: "0px 0px 20px -8px var(--secondary)" }}
           >
             <div className="flex items-center justify-between">
@@ -332,17 +306,6 @@ export default function BracketsPage() {
                 <TrophyIcon className="size-5 text-secondary" />
                 <span className="text-sm font-bold text-white">Progreso</span>
               </div>
-              <button
-                onClick={syncBattles}
-                disabled={syncing}
-                className="p-1.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-lg hover:bg-amber-500/30 transition-colors cursor-pointer text-xs font-bold flex items-center gap-1"
-                title="Sincronizar batallas ahora"
-              >
-                <BoltIcon
-                  className={`size-4 ${syncing ? "animate-spin" : ""}`}
-                />
-                Sync
-              </button>
             </div>
             <div>
               <div className="flex justify-between mb-1">
@@ -369,6 +332,10 @@ export default function BracketsPage() {
               />
             </div>
           </div>
+        </div>
+
+        <div className="mb-8">
+          <LiveStream />
         </div>
 
         {loading ? (
@@ -496,11 +463,6 @@ export default function BracketsPage() {
           roundLabel={selectedMatch?.roundLabel ?? ""}
           isOpen={!!selectedMatch}
           onClose={() => setSelectedMatch(null)}
-          onSync={async () => {
-            await syncBattles();
-            fetchTournament();
-          }}
-          isSyncing={syncing}
         />
       </div>
     </div>

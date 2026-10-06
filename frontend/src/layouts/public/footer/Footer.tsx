@@ -13,7 +13,7 @@ export default function Footer() {
         </Link>
 
         <div className="flex items-center gap-6">
-          <Link href="#" title="Discord" target="_blank">
+          <Link href="https://discord.gg/KrKNhHTwxG" title="Discord" target="_blank">
             <Typography
               variant="small"
               color="blue-gray"
@@ -23,7 +23,7 @@ export default function Footer() {
             </Typography>
           </Link>
 
-          <Link href="#" title="TikTok" target="_blank">
+          <Link href="https://www.tiktok.com/@sams.301?is_from_webapp=1&sender_device=pc" title="TikTok" target="_blank">
             <Typography
               variant="small"
               color="blue-gray"

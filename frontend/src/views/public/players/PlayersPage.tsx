@@ -34,8 +34,11 @@ export default function PlayersPage() {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   useEffect(() => {
-    const isAuth = sessionStorage.getItem("admin_auth") === "true";
-    setIsAdmin(isAuth);
+    fetch("/api/admin/session")
+      .then((r) => r.json())
+      .then((d) => {
+        setIsAdmin(d.authenticated);
+      });
   }, []);
 
   const TABLE_HEAD = [
@@ -51,13 +54,7 @@ export default function PlayersPage() {
   const fetchPlayers = async () => {
     try {
       setLoading(true);
-      const isAuth = sessionStorage.getItem("admin_auth") === "true";
-      const headers: Record<string, string> = {};
-      if (isAuth) {
-        headers["x-admin-auth"] = "true";
-      }
-
-      const res = await fetch("/api/players?status=accepted", { headers });
+      const res = await fetch("/api/players?status=accepted");
       if (!res.ok) throw new Error("Error al obtener jugadores");
       const data = await res.json();
       setPlayers(data.players || []);
@@ -157,14 +154,7 @@ export default function PlayersPage() {
                       key={head}
                       className="p-4 transition-colors hover:bg-secondary/20"
                     >
-                      <Typography
-                        variant="small"
-                        color="blue-gray"
-                        className="flex items-center justify-between gap-2 font-normal leading-none opacity-70"
-                      >
-                        {head}{" "}
-                        <ChevronUpDownIcon strokeWidth={2} className="h-4 w-4" />
-                      </Typography>
+                        {head}
                     </th>
                   ))}
                 </tr>

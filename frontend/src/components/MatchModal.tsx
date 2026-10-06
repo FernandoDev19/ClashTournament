@@ -80,8 +80,6 @@ export default function MatchModal({
   roundLabel,
   isOpen,
   onClose,
-  onSync,
-  isSyncing,
 }: MatchModalProps) {
   if (!isOpen || !match) return null;
 
@@ -170,7 +168,7 @@ export default function MatchModal({
                 <span className="text-3xl font-black text-white">
                   {match.score1 !== null ? match.score1 : "-"}
                 </span>
-                <span className="text-xl">👑</span>
+                <span className="text-xs text-neutral">partidas</span>
                 {p1Won && <StarIcon className="size-5 text-secondary ml-1" />}
               </div>
             </div>
@@ -202,7 +200,7 @@ export default function MatchModal({
                 <span className="text-3xl font-black text-white">
                   {match.score2 !== null ? match.score2 : "-"}
                 </span>
-                <span className="text-xl">👑</span>
+                <span className="text-xs text-neutral">partidas</span>
                 {p2Won && <StarIcon className="size-5 text-secondary ml-1" />}
               </div>
             </div>
@@ -212,23 +210,6 @@ export default function MatchModal({
           {p1 && <DeckGrid cards={match.deck1} playerName={p1.name} />}
           {p2 && <DeckGrid cards={match.deck2} playerName={p2.name} />}
 
-          {/* Sync Button */}
-          {onSync && p1 && p2 && (
-            <div className="pt-2">
-              <button
-                onClick={onSync}
-                disabled={isSyncing}
-                className="w-full bg-secondary text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-secondary/80 transition-colors disabled:opacity-50 cursor-pointer shadow-lg"
-              >
-                <BoltIcon
-                  className={`size-5 text-amber-300 ${isSyncing ? "animate-spin" : ""}`}
-                />
-                {isSyncing
-                  ? "Buscando partida en Clash Royale..."
-                  : "⚡ Sincronizar Batalla en Vivo desde la API"}
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

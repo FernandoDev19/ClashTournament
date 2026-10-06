@@ -19,8 +19,11 @@ import {
 } from "@material-tailwind/react";
 import Image from "next/image";
 import Link from "next/link";
+import LiveStream from "@/src/components/LiveStream";
 
 export default function HomePage() {
+  const [started, setStarted] = useState(false);
+
   const [tournamentInfo, setTournamentInfo] = useState<{
     acceptedCount: number;
     maxPlayers: number;
@@ -72,8 +75,10 @@ export default function HomePage() {
           minutes: Math.floor((difference / 1000 / 60) % 60),
           seconds: Math.floor((difference / 1000) % 60),
         });
+        setStarted(false);
       } else {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        setStarted(true);
       }
     };
 
@@ -103,7 +108,7 @@ export default function HomePage() {
                 as="span"
                 className="text-tertiary/80 font-extrabold text-xs"
               >
-                EVENTO EN VIVO
+                {started ? "EVENTO EN VIVO" : "INSCRIPCIONES ABIERTAS"}
               </Typography>
             </div>
 
@@ -178,7 +183,7 @@ export default function HomePage() {
                   variant="h3"
                   className="text-white font-extrabold text-2xl tracking-tight"
                 >
-                  ¡La Batalla Comienza Pronto!
+                  {started ? "¡El torneo ya comenzó!" : "¡La Batalla Comienza Pronto!"}
                 </Typography>
                 <Typography variant="small" className="text-neutral text-sm">
                   Prepárate para la primera ronda del torneo. Revisa el contador
@@ -223,6 +228,8 @@ export default function HomePage() {
             </div>
           </Card>
         </section>
+
+        <section className="mb-16 md:mb-20"><LiveStream /></section>
 
         <section>
           <Typography
